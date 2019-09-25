@@ -24,9 +24,66 @@
 
 package com.shimmermare.inviteroles;
 
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
+import joptsimple.OptionSpec;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.JDABuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.security.auth.login.LoginException;
+import java.io.IOException;
+
 public class InviteRoles
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(InviteRoles.class);
+
+    private final String token;
+
+    private JDA jda;
+
+    public InviteRoles(String token)
+    {
+        this.token = token;
+    }
+
+    private void run()
+    {
+        LOGGER.info("Starting InviteRoles Discord Bot. I'm alive!");
+
+        JDABuilder jdaBuilder = new JDABuilder(token);
+
+        try
+        {
+            jda = jdaBuilder.build();
+        }
+        catch (LoginException e)
+        {
+            LOGGER.error("Unable to login to Discord", e);
+            return;
+        }
+
+        try
+        {
+            System.in.read();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+            LOGGER.info("Application terminated from console. Goodbye!");
+        }
+    }
+
     public static void main(String[] args)
     {
+        OptionParser optionParser = new OptionParser();
+        OptionSpec<String> tokenSpec = optionParser.accepts("token").withRequiredArg().ofType(String.class).required();
+        OptionSet optionSet = optionParser.parse(args);
+
+        String token = tokenSpec.value(optionSet);
+
+        InviteRoles inviteRoles = new InviteRoles(token);
+        inviteRoles.run();
     }
 }
