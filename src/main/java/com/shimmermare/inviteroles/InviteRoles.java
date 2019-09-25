@@ -90,6 +90,11 @@ public class InviteRoles
         return version;
     }
 
+    public JDA getJda()
+    {
+        return jda;
+    }
+
     public static void main(String[] args)
     {
         OptionParser optionParser = new OptionParser();
