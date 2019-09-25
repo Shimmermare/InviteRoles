@@ -83,16 +83,6 @@ public class InviteRoles
             LOGGER.error("Unable to login to Discord", e);
             return;
         }
-
-        try
-        {
-            System.in.read();
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-            LOGGER.info("Application terminated from console. Goodbye!");
-        }
     }
 
     public String getVersion()
@@ -110,5 +100,16 @@ public class InviteRoles
 
         InviteRoles inviteRoles = new InviteRoles(token);
         inviteRoles.run();
+
+        try
+        {
+            System.in.read();
+            LOGGER.info("Application terminated from console. Goodbye!");
+            System.exit(0);
+        }
+        catch (IOException e)
+        {
+            LOGGER.error("Unable to read from console", e);
+        }
     }
 }
