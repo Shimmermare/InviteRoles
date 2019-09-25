@@ -34,12 +34,15 @@ import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
+import java.util.Properties;
 
 public class InviteRoles
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(InviteRoles.class);
 
     private final String token;
+
+    private String version;
 
     private JDA jda;
 
@@ -48,9 +51,26 @@ public class InviteRoles
         this.token = token;
     }
 
+    private void readProperties()
+    {
+        LOGGER.debug("Reading application properties from resource");
+        Properties properties = new Properties();
+        try
+        {
+            properties.load(InviteRoles.class.getResourceAsStream(".properties"));
+        } catch (Exception e)
+        {
+            LOGGER.error("Unable to load application properties", e);
+        }
+
+        this.version = properties.getProperty("version", "unknown");
+    }
+
     private void run()
     {
-        LOGGER.info("Starting InviteRoles Discord Bot. I'm alive!");
+        readProperties();
+
+        LOGGER.info("Starting InviteRoles Discord Bot version {}. I'm alive!", this.version);
 
         JDABuilder jdaBuilder = new JDABuilder(token);
 
@@ -73,6 +93,11 @@ public class InviteRoles
             e.printStackTrace();
             LOGGER.info("Application terminated from console. Goodbye!");
         }
+    }
+
+    public String getVersion()
+    {
+        return version;
     }
 
     public static void main(String[] args)
