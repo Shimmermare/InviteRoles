@@ -5,9 +5,7 @@ import net.dv8tion.jda.api.entities.Invite;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * A class to watch server invites and count differences.
@@ -15,9 +13,6 @@ import java.util.Map;
 public final class InviteTracker
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(InviteTracker.class);
-
-    //to lock tracker during update
-    private final Object lock = new Object();
 
     private final Guild guild;
     private final Map<String, Integer> inviteUses = new HashMap<>();
@@ -39,34 +34,49 @@ public final class InviteTracker
      */
     public void update()
     {
+        List<Invite> invites = guild.retrieveInvites().complete();
+        findUsesDelta(invites);
+        updateMap(invites);
+        LOGGER.debug("Tracker of server {} updated, delta: {}", guild.getIdLong(), deltaUses);
+    }
+
+    /**
+     * Async version of {@link #update()}.
+     */
+    public void updateAsync()
+    {
         guild.retrieveInvites().queue(invites ->
         {
-            synchronized (lock)
-            {
-                Map<String, Integer> deltaUsesMap = new HashMap<>();
-                for (Invite invite : invites)
-                {
-                    int uses = inviteUses.getOrDefault(invite.getCode(), 0);
-                    int deltaUses = invite.getUses() - uses;
-                    if (deltaUses < 0)
-                    {
-                        LOGGER.error("Invite uses delta is negative ({}). This is shouldn't be possible.", deltaUses);
-                        continue;
-                    }
-                    deltaUsesMap.put(invite.getCode(), deltaUses);
-                }
-                deltaUses = Collections.unmodifiableMap(deltaUsesMap);
-
-                //Repopulating map is safer and faster than comparing.
-                inviteUses.clear();
-                for (Invite invite : invites)
-                {
-                    inviteUses.put(invite.getCode(), invite.getUses());
-                }
-
-                LOGGER.debug("InviteTracker of server {} updated, delta: {}", guild.getIdLong(), deltaUses);
-            }
+            findUsesDelta(invites);
+            updateMap(invites);
+            LOGGER.debug("Tracker of server {} updated asynchronously, delta: {}", guild.getIdLong(), deltaUses);
         });
+    }
+
+    private void findUsesDelta(Collection<Invite> invites)
+    {
+        Map<String, Integer> deltaUsesMap = new HashMap<>();
+        for (Invite invite : invites)
+        {
+            int uses = inviteUses.getOrDefault(invite.getCode(), 0);
+            int deltaUses = invite.getUses() - uses;
+            if (deltaUses < 0)
+            {
+                LOGGER.error("Server {} invite {} uses delta is negative ({}). This is shouldn't be possible.", guild.getIdLong(), invite.getCode(), deltaUses);
+                continue;
+            }
+            deltaUsesMap.put(invite.getCode(), deltaUses);
+        }
+        deltaUses = Collections.unmodifiableMap(deltaUsesMap);
+    }
+
+    private void updateMap(Collection<Invite> invites)
+    {
+        inviteUses.clear();
+        for (Invite invite : invites)
+        {
+            inviteUses.put(invite.getCode(), invite.getUses());
+        }
     }
 
     /**
@@ -78,9 +88,6 @@ public final class InviteTracker
      */
     public Map<String, Integer> getUsesDelta()
     {
-        synchronized (lock)
-        {
-            return deltaUses;
-        }
+        return deltaUses;
     }
 }
