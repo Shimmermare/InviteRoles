@@ -29,11 +29,15 @@ import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.Guild;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 public class InviteRoles
@@ -45,6 +49,7 @@ public class InviteRoles
     private String version;
 
     private JDA jda;
+    private Map<Long, ServerInstance> joinedServers = new HashMap<>();
 
     public InviteRoles(String token)
     {
@@ -83,6 +88,28 @@ public class InviteRoles
             LOGGER.error("Unable to login to Discord", e);
             return;
         }
+    }
+
+    public Map<Long, ServerInstance> getJoinedServers()
+    {
+        return Collections.unmodifiableMap(joinedServers);
+    }
+
+    public ServerInstance getServerInstance(long server)
+    {
+        return joinedServers.get(server);
+    }
+
+    public ServerInstance newServerInstance(Guild server)
+    {
+        ServerInstance instance = new ServerInstance(this, server, new ServerSettings());
+        joinedServers.put(server.getIdLong(), instance);
+        return instance;
+    }
+
+    public ServerInstance removeServerInstance(long server)
+    {
+        return joinedServers.remove(server);
     }
 
     public String getVersion()
