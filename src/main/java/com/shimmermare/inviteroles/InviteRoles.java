@@ -83,7 +83,9 @@ public class InviteRoles
 
         try
         {
-            jda = jdaBuilder.build();
+            jda = jdaBuilder
+                    .addEventListeners(new EventListener(this))
+                    .build();
         }
         catch (LoginException e)
         {
