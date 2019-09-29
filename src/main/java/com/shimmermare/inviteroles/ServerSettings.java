@@ -32,7 +32,7 @@ import java.util.Optional;
 /**
  * The class representing settings of a server.
  */
-public class ServerSettings
+public final class ServerSettings
 {
     private Map<String, Long> inviteRoles;
     //-1 - disabled, 0 - system message channel
