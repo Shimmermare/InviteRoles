@@ -30,6 +30,7 @@ import joptsimple.OptionSpec;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +64,8 @@ public class InviteRoles
         try
         {
             properties.load(InviteRoles.class.getResourceAsStream(".properties"));
-        } catch (Exception e)
+        }
+        catch (Exception e)
         {
             LOGGER.error("Unable to load application properties", e);
         }
@@ -88,6 +90,9 @@ public class InviteRoles
             LOGGER.error("Unable to login to Discord", e);
             return;
         }
+
+        User selfUser = jda.getSelfUser();
+        LOGGER.info("Successfully logged in as {} ({}).", selfUser.getName(), selfUser.getIdLong());
     }
 
     public Map<Long, ServerInstance> getJoinedServers()
