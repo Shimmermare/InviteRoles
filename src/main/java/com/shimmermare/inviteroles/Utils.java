@@ -56,7 +56,7 @@ public final class Utils
                 .setAuthor("Warning Message!")
                 .setThumbnail("url") //TODO set url
                 .setDescription(log)
-                .setFooter("InviteRole v1.0.0 by Shimmermare")
+                .setFooter("InviteRole by Shimmermare")
                 .build();
     }
 }
