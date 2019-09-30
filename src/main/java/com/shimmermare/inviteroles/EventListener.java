@@ -31,6 +31,7 @@ import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
+import net.dv8tion.jda.api.events.role.RoleDeleteEvent;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -38,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import java.util.HashMap;
 import java.util.Map;
 
 import static com.shimmermare.inviteroles.Utils.censorInviteCode;
@@ -145,6 +147,25 @@ public class EventListener extends ListenerAdapter
         Guild guild = event.getGuild();
         bot.removeServerInstance(guild.getIdLong());
         LOGGER.info("The bot has left server {}. Bye!", guild.getIdLong());
+    }
+
+    @Override
+    public void onRoleDelete(@Nonnull RoleDeleteEvent event)
+    {
+        Guild guild = event.getGuild();
+        ServerInstance instance = bot.getServerInstance(guild.getIdLong());
+        ServerSettings settings = instance.getServerSettings();
+
+        for (Map.Entry<String, Long> entry : new HashMap<>(settings.getInviteRoles()).entrySet())
+        {
+            if (event.getRole().getIdLong() == entry.getValue())
+            {
+                settings.removeInviteRole(entry.getKey());
+                LOGGER.debug("Invite role {}/{} on server {} is removed because role itself was removed.",
+                        entry.getKey(), entry.getValue(), guild.getIdLong());
+                break;
+            }
+        }
     }
 
     @Override
