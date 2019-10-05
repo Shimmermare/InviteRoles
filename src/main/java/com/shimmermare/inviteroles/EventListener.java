@@ -24,10 +24,14 @@
 
 package com.shimmermare.inviteroles;
 
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.ParseResults;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
+import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
 import net.dv8tion.jda.api.events.role.RoleDeleteEvent;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
@@ -163,6 +167,41 @@ public class EventListener extends ListenerAdapter
                         entry.getKey(), entry.getValue(), guild.getIdLong());
                 break;
             }
+        }
+    }
+
+    @Override
+    public void onGuildMessageReceived(@Nonnull GuildMessageReceivedEvent event)
+    {
+        Guild guild = event.getGuild();
+        ServerInstance instance = bot.getServerInstance(guild.getIdLong());
+        CommandDispatcher<CommandSource> dispatcher = bot.getCommandDispatcher();
+        Member member = event.getMember();
+        Message message = event.getMessage();
+        TextChannel channel = message.getTextChannel();
+
+        if (member == null)
+        {
+            //no commands from webhooks
+            return;
+        }
+
+        CommandSource source = new CommandSource(instance, channel, member);
+        String content = message.getContentRaw();
+        ParseResults<CommandSource> parseResults = dispatcher.parse(content, source);
+
+        try
+        {
+            int result = dispatcher.execute(parseResults);
+            LOGGER.debug("Command executed with result {} on server {} issued by user {} " +
+                            "in channel {} in message {} with content '{}'.",
+                    result, guild.getIdLong(), member.getIdLong(), channel.getIdLong(), message.getIdLong(), content);
+        }
+        catch (CommandSyntaxException e)
+        {
+            LOGGER.debug("Command failed to execute on server {} issued by user {} " +
+                            "in channel {} in message {} with content '{}'.",
+                    guild.getIdLong(), member.getIdLong(), channel.getIdLong(), message.getIdLong(), content, e);
         }
     }
 

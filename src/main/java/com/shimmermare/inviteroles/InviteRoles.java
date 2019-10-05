@@ -24,6 +24,7 @@
 
 package com.shimmermare.inviteroles;
 
+import com.mojang.brigadier.CommandDispatcher;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -51,6 +52,7 @@ public class InviteRoles
     private String version;
 
     private JDA jda;
+    private CommandDispatcher<CommandSource> commandDispatcher;
     private Map<Long, ServerInstance> joinedServers = new HashMap<>();
 
     public InviteRoles(String token)
@@ -79,6 +81,9 @@ public class InviteRoles
         readProperties();
 
         LOGGER.info("Starting InviteRoles Discord Bot version {}. I'm alive!", this.version);
+
+        commandDispatcher = new CommandDispatcher<>();
+        Command.register(commandDispatcher);
 
         JDABuilder jdaBuilder = new JDABuilder(token);
 
@@ -128,6 +133,11 @@ public class InviteRoles
     public ServerInstance removeServerInstance(long server)
     {
         return joinedServers.remove(server);
+    }
+
+    public CommandDispatcher<CommandSource> getCommandDispatcher()
+    {
+        return commandDispatcher;
     }
 
     public String getVersion()
