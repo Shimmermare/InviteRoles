@@ -185,11 +185,18 @@ public class EventListener extends ListenerAdapter
             //no commands from webhooks
             return;
         }
+        String content = message.getContentRaw();
+        if (content.length() < 2 || content.charAt(0) != '/')
+        {
+            return;
+        }
 
         CommandSource source = new CommandSource(instance, channel, member);
-        String content = message.getContentRaw();
-        ParseResults<CommandSource> parseResults = dispatcher.parse(content, source);
-
+        ParseResults<CommandSource> parseResults = dispatcher.parse(content.substring(1), source);
+        if (parseResults.getContext().getNodes().isEmpty())
+        {
+            return;
+        }
         try
         {
             int result = dispatcher.execute(parseResults);
