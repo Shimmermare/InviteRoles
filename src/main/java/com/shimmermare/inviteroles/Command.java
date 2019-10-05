@@ -78,6 +78,7 @@ public final class Command
                         .then(argument("channel", TextChannelArgumentType.channel())
                                 .executes(Command::logChannelSet)
                         )
+                        .executes(Command::logChannelNoArg)
                 )
                 .then(argument("invite-code", word())
                         .requires(s -> s.getMember().hasPermission(Permission.MANAGE_ROLES))
@@ -87,6 +88,7 @@ public final class Command
                         .then(argument("role", RoleArgumentType.role())
                                 .executes(Command::inviteRoleSet)
                         )
+                        .executes(Command::inviteRoleNoArg)
                 )
                 .executes(Command::executeNoArg)
         );
@@ -153,6 +155,40 @@ public final class Command
         return 4;
     }
 
+    private static int logChannelNoArg(CommandContext<CommandSource> context)
+    {
+        CommandSource source = context.getSource();
+        Member member = source.getMember();
+        TextChannel channel = source.getChannel();
+        Guild server = channel.getGuild();
+        ServerInstance instance = source.getServerInstance();
+        ServerSettings settings = instance.getServerSettings();
+        long logChannel = settings.getLogChannel();
+
+        if (logChannel == -1)
+        {
+            channel.sendMessage("Log channel is off.").queue();
+        }
+        else if (logChannel == 0)
+        {
+            TextChannel sysChannel = server.getSystemChannel();
+            channel.sendMessage("Log channel is set to default (system message channel: "
+                    + (sysChannel == null ? "disabled" : sysChannel.getAsMention()) + ").").queue();
+        }
+        else
+        {
+            TextChannel logChannelObj = server.getTextChannelById(logChannel);
+            if (logChannelObj == null)
+            {
+                //TODO throw exception
+                return 1 << 16 | 8;
+            }
+            channel.sendMessage("Log channel is set to " + logChannelObj.getAsMention() + ".").queue();
+        }
+        LOGGER.debug("Log channel info command issued from server {} by user {}.", server.getIdLong(), member.getIdLong());
+        return 8;
+    }
+
     private static int inviteRoleRemove(CommandContext<CommandSource> context)
     {
         CommandSource source = context.getSource();
@@ -215,6 +251,38 @@ public final class Command
         return 2;
     }
 
+    private static int inviteRoleNoArg(CommandContext<CommandSource> context)
+    {
+        CommandSource source = context.getSource();
+        Member member = source.getMember();
+        TextChannel channel = source.getChannel();
+        Guild server = channel.getGuild();
+        ServerInstance instance = source.getServerInstance();
+        ServerSettings settings = instance.getServerSettings();
+
+        String inviteCode = context.getArgument("invite-code", String.class);
+
+        long roleId = settings.getInviteRole(inviteCode);
+        if (roleId == 0)
+        {
+            channel.sendMessage("No invite role is set for '" + Utils.censorInviteCode(inviteCode) + "'.").queue();
+            return 1 << 16 | 7;
+        }
+        Role role = server.getRoleById(roleId);
+        if (role == null)
+        {
+            channel.sendMessage("**Error**: invite role for '" + Utils.censorInviteCode(inviteCode)
+                    + "' is set to id " + roleId + " but such role doesn't exist.").queue();
+            LOGGER.error("Unexpectedly invite role {} doesn't exist on server {}", roleId, server.getIdLong());
+            return 2 << 16 | 7;
+        }
+
+        channel.sendMessage("Invite role for '" + Utils.censorInviteCode(inviteCode)
+                + "' is **" + role.getName() + "**.").queue();
+        LOGGER.debug("Invite role info command for invite {} issued from server {} by user {}.",
+                inviteCode, server.getIdLong(), member.getIdLong());
+        return 7;
+    }
 
     private static int executeNoArg(CommandContext<CommandSource> context)
     {
