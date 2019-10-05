@@ -145,7 +145,6 @@ public final class Command
         return 3;
     }
 
-
     private static int inviteRoleSet(CommandContext<CommandSource> context)
     {
         CommandSource source = context.getSource();
