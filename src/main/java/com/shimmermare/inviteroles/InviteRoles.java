@@ -108,6 +108,15 @@ public class InviteRoles
 
         User selfUser = jda.getSelfUser();
         LOGGER.info("Successfully logged in as {} ({}).", selfUser.getName(), selfUser.getIdLong());
+
+        List<Guild> servers = jda.getGuilds();
+        int totalMembers = 0;
+        for (Guild server : servers)
+        {
+            totalMembers += server.getMembers().size();
+            newServerInstance(server); //temp til db impl
+        }
+        LOGGER.info("Currently joined {} servers with a total of {} members.", servers.size(), totalMembers);
     }
 
     public Map<Long, ServerInstance> getJoinedServers()
