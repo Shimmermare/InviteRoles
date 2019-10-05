@@ -46,63 +46,25 @@ public class ServerInstance
         this.serverSettings = serverSettings;
     }
 
-    public void sendLogMessage(String text)
+    public void sendWarning(String text)
     {
-        long logChannel = serverSettings.getLogChannel();
-        if (logChannel == -1)
+        if (!serverSettings.isWarningsEnabled())
         {
-            LOGGER.debug("Log channel is disabled on server {}, log message is ignored.", server.getIdLong());
+            LOGGER.debug("Warnings are disabled on server {}, the warning is ignored.", server.getIdLong());
             return;
         }
 
-        TextChannel channel;
-        if (logChannel > 0)
+        TextChannel channel = server.getSystemChannel();
+        if (channel == null)
         {
-
-        }
-        if (logChannel == 0)
-        {
-            channel = server.getSystemChannel();
-            if (channel == null)
-            {
-                LOGGER.debug("Log channel is default on server {}, but no system channel is set. Log message is ignored.",
-                        server.getIdLong());
-                return;
-            }
-        }
-        else
-        {
-            channel = server.getTextChannelById(logChannel);
-            if (channel == null)
-            {
-                LOGGER.info("Log channel is {} on server {}, but such channel doesn't exists. " +
-                                "Trying to send log message into system channel.",
-                        logChannel, server.getIdLong());
-                serverSettings.setLogChannel(0);
-                sendLogMessage(text);
-                return;
-            }
+            LOGGER.debug("Warnings are enabled on server {} " +
+                    "but system message channel is disabled, the warning is ignored.", server.getIdLong());
+            return;
         }
 
-        channel.sendMessage(text).queue(
-                success -> LOGGER.debug("Log message was sent into channel {} on server {}.",
-                        channel.getIdLong(), server.getIdLong()),
-                exception ->
-                {
-                    LOGGER.info("Failed to send log message into channel {} on server {}.",
-                            channel.getIdLong(), server.getIdLong(), exception);
-                    if (logChannel == 0)
-                    {
-                        //lol gg
-                        return;
-                    }
-
-                    TextChannel systemChannel = server.getSystemChannel();
-                    if (systemChannel != null)
-                    {
-                        systemChannel.sendMessage(Utils.createLogEmbed("Can't send message into log channel. Check bot's permissions.")).queue();
-                    }
-                }
+        channel.sendMessage(Utils.createWarningEmbed(text)).queue(
+                success -> LOGGER.debug("Warning was sent to server {}.", server.getIdLong()),
+                exception -> LOGGER.info("Failed to send warning to server {}.", server.getIdLong(), exception)
         );
     }
 

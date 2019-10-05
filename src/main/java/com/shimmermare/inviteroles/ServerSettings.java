@@ -35,8 +35,7 @@ import java.util.Optional;
 public final class ServerSettings
 {
     private Map<String, Long> inviteRoles;
-    //-1 - disabled, 0 - system message channel
-    private long logChannel;
+    private boolean warningsEnabled;
 
     public ServerSettings()
     {
@@ -98,25 +97,24 @@ public final class ServerSettings
     }
 
     /**
-     * Get current log channel snowflake id.
+     * Is server warnings enabled.
+     * If enabled, bot will post warning messages such as edge cases or errors
+     * into system message channel. If that channel is disabled, no warnings will be posted.
      *
-     * @return current log channel snowflake id, or {@code -1} if log channel disabled,
-     * or {@code 0} if log channel is system message channel (default value).
+     * @return is server warnings enabled.
      */
-    public long getLogChannel()
+    public boolean isWarningsEnabled()
     {
-        return logChannel;
+        return warningsEnabled;
     }
 
     /**
-     * Set current log channel snowflake id.
+     * Set server warnings enabled.
      *
-     * @param logChannel log channel snowflake id,
-     *                   or {@code -1} if log channel disabled,
-     *                   or {@code 0} if log channel is system message channel (default value).
+     * @param warningsEnabled server warnings enabled.
      */
-    public void setLogChannel(long logChannel)
+    public void setWarningsEnabled(boolean warningsEnabled)
     {
-        this.logChannel = logChannel;
+        this.warningsEnabled = warningsEnabled;
     }
 }

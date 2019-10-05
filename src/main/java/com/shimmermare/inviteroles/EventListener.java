@@ -91,7 +91,7 @@ public class EventListener extends ListenerAdapter
         else if (inviteUsesDelta.size() > 1)
         {
             LOGGER.info("Two or more users joined server {} between invite tracker updates.", guild.getIdLong());
-            instance.sendLogMessage("Two or more users joined server at the exact same time! " +
+            instance.sendWarning("Two or more users joined server at the exact same time! " +
                     "Unfortunately Discord doesn't tell which invite was used by whom, " +
                     "so no invite roles will be granted and you should do this manually.");
             return;
@@ -105,8 +105,6 @@ public class EventListener extends ListenerAdapter
             settings.removeInviteRole(inviteCode);
             LOGGER.info("Invite role {} for invite {} to server {} doesn't exists.",
                     roleId, inviteCode, guild.getIdLong());
-            instance.sendLogMessage("Role with id **" + roleId + "** that was set for " +
-                    "invite code **" + censorInviteCode(inviteCode) + "** doesn't exists!");
             return;
         }
 
@@ -130,7 +128,7 @@ public class EventListener extends ListenerAdapter
                                 roleId, member.getIdLong(), inviteCode, guild.getIdLong(), exception);
                         msg += " Internal error.";
                     }
-                    instance.sendLogMessage(msg);
+                    instance.sendWarning(msg);
                 }
         );
     }

@@ -49,13 +49,13 @@ public final class Utils
         return code.substring(0, 4) + new String(stars);
     }
 
-    public static MessageEmbed createLogEmbed(String log)
+    public static MessageEmbed createWarningEmbed(String warning)
     {
         return new EmbedBuilder()
                 .setColor(Color.RED)
-                .setAuthor("Warning Message!")
+                .setAuthor("Warning!")
                 .setThumbnail("url") //TODO set url
-                .setDescription(log)
+                .setDescription(warning)
                 .setFooter("InviteRole by Shimmermare")
                 .build();
     }

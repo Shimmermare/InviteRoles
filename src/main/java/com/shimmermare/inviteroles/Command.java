@@ -67,18 +67,13 @@ public final class Command
     static void register(CommandDispatcher<CommandSource> commandDispatcher)
     {
         commandDispatcher.register(literal("inviteroles")
-                .then(literal("logchannel")
+                .then(literal("warnings")
                         .requires(s -> s.getMember().hasPermission(Permission.ADMINISTRATOR))
-                        .then(literal("off")
-                                .executes(Command::logChannelOff)
-                        )
-                        .then(literal("default")
-                                .executes(Command::logChannelDefault)
-                        )
-                        .then(argument("channel", TextChannelArgumentType.channel())
-                                .executes(Command::logChannelSet)
-                        )
-                        .executes(Command::logChannelNoArg)
+                        .then(literal("on").executes(c -> warningsSet(c, true)))
+                        .then(literal("enable").executes(c -> warningsSet(c, true)))
+                        .then(literal("off").executes(c -> warningsSet(c, false)))
+                        .then(literal("disable").executes(c -> warningsSet(c, false)))
+                        .executes(Command::warningsStatus)
                 )
                 .then(argument("invite-code", word())
                         .requires(s -> s.getMember().hasPermission(Permission.MANAGE_ROLES))
@@ -94,41 +89,23 @@ public final class Command
         );
     }
 
-    private static int logChannelOff(CommandContext<CommandSource> context)
+    private static int warningsSet(CommandContext<CommandSource> context, boolean enabled)
     {
         CommandSource source = context.getSource();
+        Member member = source.getMember();
         TextChannel channel = source.getChannel();
         Guild server = channel.getGuild();
         ServerInstance instance = source.getServerInstance();
         ServerSettings settings = instance.getServerSettings();
 
-        settings.setLogChannel(-1);
-
-        channel.sendMessage("Log channel now disabled.").queue();
-        LOGGER.debug("Log channel on server {} was disabled by admin {}.",
-                server.getIdLong(), source.getMember().getIdLong());
-
-        return 6;
-    }
-
-    private static int logChannelDefault(CommandContext<CommandSource> context)
-    {
-        CommandSource source = context.getSource();
-        TextChannel channel = source.getChannel();
-        Guild server = channel.getGuild();
-        ServerInstance instance = source.getServerInstance();
-        ServerSettings settings = instance.getServerSettings();
-
-        settings.setLogChannel(0);
-
-        channel.sendMessage("Log channel now disabled.").queue();
-        LOGGER.debug("Log channel on server {} was set to default by admin {}.",
-                server.getIdLong(), source.getMember().getIdLong());
-
+        settings.setWarningsEnabled(enabled);
+        channel.sendMessage("Warnings now **" + (enabled ? "enabled" : "disabled") + "**.").queue();
+        LOGGER.debug("Warnings on server {} were set to {} by user {}.",
+                server.getIdLong(), enabled, member.getIdLong());
         return 5;
     }
 
-    private static int logChannelSet(CommandContext<CommandSource> context)
+    private static int warningsStatus(CommandContext<CommandSource> context)
     {
         CommandSource source = context.getSource();
         Member member = source.getMember();
@@ -137,56 +114,9 @@ public final class Command
         ServerInstance instance = source.getServerInstance();
         ServerSettings settings = instance.getServerSettings();
 
-        TextChannelRetriever textChannelRetriever = context.getArgument("log-channel", TextChannelRetriever.class);
-
-        TextChannel logChannel = textChannelRetriever.apply(server);
-        if (logChannel == null)
-        {
-            channel.sendMessage("Channel in 'log-channel' arg doesn't exist!").queue();
-            LOGGER.debug("Admin {} from server {} tried to set non-existent log channel.",
-                    member.getIdLong(), server.getIdLong());
-            return 1 << 16 | 4;
-        }
-
-        settings.setLogChannel(logChannel.getIdLong());
-        channel.sendMessage("Log channel now is " + logChannel.getAsMention() + ".").queue();
-        LOGGER.debug("Log channel on server {} was set to {} by admin {}.",
-                server.getIdLong(), logChannel.getIdLong(), member.getIdLong());
+        channel.sendMessage("Warnings are **" + (settings.isWarningsEnabled() ? "enabled" : "disabled") + "**.").queue();
+        LOGGER.debug("Warnings status on server {} requested by user {}", server.getIdLong(), member.getIdLong());
         return 4;
-    }
-
-    private static int logChannelNoArg(CommandContext<CommandSource> context)
-    {
-        CommandSource source = context.getSource();
-        Member member = source.getMember();
-        TextChannel channel = source.getChannel();
-        Guild server = channel.getGuild();
-        ServerInstance instance = source.getServerInstance();
-        ServerSettings settings = instance.getServerSettings();
-        long logChannel = settings.getLogChannel();
-
-        if (logChannel == -1)
-        {
-            channel.sendMessage("Log channel is off.").queue();
-        }
-        else if (logChannel == 0)
-        {
-            TextChannel sysChannel = server.getSystemChannel();
-            channel.sendMessage("Log channel is set to default (system message channel: "
-                    + (sysChannel == null ? "disabled" : sysChannel.getAsMention()) + ").").queue();
-        }
-        else
-        {
-            TextChannel logChannelObj = server.getTextChannelById(logChannel);
-            if (logChannelObj == null)
-            {
-                //TODO throw exception
-                return 1 << 16 | 8;
-            }
-            channel.sendMessage("Log channel is set to " + logChannelObj.getAsMention() + ".").queue();
-        }
-        LOGGER.debug("Log channel info command issued from server {} by user {}.", server.getIdLong(), member.getIdLong());
-        return 8;
     }
 
     private static int inviteRoleRemove(CommandContext<CommandSource> context)
@@ -295,28 +225,7 @@ public final class Command
 
         StringBuilder builder = new StringBuilder();
 
-        builder.append("Log channel: ");
-        long logChannel = settings.getLogChannel();
-        if (logChannel == -1)
-        {
-            builder.append("off.");
-        }
-        else if (logChannel == 0)
-        {
-            TextChannel sysChannel = server.getSystemChannel();
-            if (sysChannel == null)
-            {
-                builder.append("default (effectively off since system message channel is disabled).");
-            }
-            else
-            {
-                builder.append("default (").append(sysChannel.getAsMention()).append(").");
-            }
-        }
-        else
-        {
-            builder.append("<#").append(settings.getLogChannel()).append(").");
-        }
+        builder.append("Warnings: ").append(settings.isWarningsEnabled() ? "enabled" : "disabled").append('.');
 
         Map<String, Long> inviteRoles = settings.getInviteRoles();
         if (inviteRoles.isEmpty())
