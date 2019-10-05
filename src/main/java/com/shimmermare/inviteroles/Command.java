@@ -219,19 +219,52 @@ public final class Command
     private static int executeNoArg(CommandContext<CommandSource> context)
     {
         CommandSource source = context.getSource();
+        Member member = source.getMember();
         TextChannel channel = source.getChannel();
         Guild server = channel.getGuild();
         ServerInstance instance = source.getServerInstance();
         ServerSettings settings = instance.getServerSettings();
 
         StringBuilder builder = new StringBuilder();
-        for (Map.Entry<String, Long> inviteRole : settings.getInviteRoles().entrySet())
+
+        builder.append("Log channel: ");
+        long logChannel = settings.getLogChannel();
+        if (logChannel == -1)
         {
-            Role role = server.getRoleById(inviteRole.getValue());
-            builder.append("• ")
-                    .append(censorInviteCode(inviteRole.getKey()))
-                    .append(" / @")
-                    .append(role == null ? "deleted-role" : role.getName());
+            builder.append("off.");
+        }
+        else if (logChannel == 0)
+        {
+            TextChannel sysChannel = server.getSystemChannel();
+            if (sysChannel == null)
+            {
+                builder.append("default (effectively off since system message channel is disabled).");
+            }
+            else
+            {
+                builder.append("default (").append(sysChannel.getAsMention()).append(").");
+            }
+        }
+        else
+        {
+            builder.append("<#").append(settings.getLogChannel()).append(").");
+        }
+
+        Map<String, Long> inviteRoles = settings.getInviteRoles();
+        if (inviteRoles.isEmpty())
+        {
+            builder.append("\nNo invite roles set!");
+        }
+        else
+        {
+            for (Map.Entry<String, Long> inviteRole : inviteRoles.entrySet())
+            {
+                Role role = server.getRoleById(inviteRole.getValue());
+                builder.append("\n• ")
+                        .append(censorInviteCode(inviteRole.getKey()))
+                        .append(" / @")
+                        .append(role == null ? "deleted-role" : role.getName());
+            }
         }
 
         EmbedBuilder embedBuilder = new EmbedBuilder()
@@ -241,8 +274,8 @@ public final class Command
                 .setFooter("InviteRole by Shimmermare");
 
         channel.sendMessage(embedBuilder.build()).queue();
-        LOGGER.debug("Command: execute without arg");
-
+        LOGGER.debug("Settings command executed from server {} by user {}.",
+                server.getIdLong(), member.getIdLong());
         return 1;
     }
 
