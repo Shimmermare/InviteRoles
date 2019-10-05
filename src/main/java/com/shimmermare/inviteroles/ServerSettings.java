@@ -35,7 +35,7 @@ import java.util.Optional;
 public final class ServerSettings
 {
     private Map<String, Long> inviteRoles;
-    private boolean warningsEnabled;
+    private boolean warningsEnabled = true;
 
     public ServerSettings()
     {
