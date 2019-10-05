@@ -93,6 +93,16 @@ public class InviteRoles
             return;
         }
 
+        try
+        {
+            jda.awaitReady();
+        }
+        catch (InterruptedException e)
+        {
+            LOGGER.error("Failed to await JDA ready", e);
+            return;
+        }
+
         User selfUser = jda.getSelfUser();
         LOGGER.info("Successfully logged in as {} ({}).", selfUser.getName(), selfUser.getIdLong());
     }
