@@ -204,6 +204,7 @@ public class EventListener extends ListenerAdapter
         }
         catch (CommandSyntaxException e)
         {
+            channel.sendMessage("Command syntax error! " + e.getMessage()).queue();
             LOGGER.debug("Command failed to execute on server {} issued by user {} " +
                             "in channel {} in message {} with content '{}'.",
                     guild.getIdLong(), member.getIdLong(), channel.getIdLong(), message.getIdLong(), content, e);
