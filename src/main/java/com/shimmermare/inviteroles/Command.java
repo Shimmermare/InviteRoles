@@ -160,7 +160,8 @@ public final class Command
         Role role = roleRetriever.apply(server);
         if (role == null)
         {
-            channel.sendMessage("Role in 'role' arg doesn't exist!").queue();
+            channel.sendMessage("Role in 'role' arg doesn't exist! " +
+                    "Don't forget to use quotes if role name contains whitespaces.").queue();
             LOGGER.debug("User {} from server {} tried to set non-existent role for invite {}",
                     member.getIdLong(), server.getIdLong(), inviteCode);
             return 3 << 16 | 2;
@@ -313,7 +314,7 @@ public final class Command
             else
             {
                 reader.setCursor(startPos); //don't forget to reset cursor
-                String arg = reader.readQuotedString();
+                String arg = reader.readString();
                 return s ->
                 {
                     List<Role> rolesByName = s.getRolesByName(arg, true);
@@ -365,7 +366,7 @@ public final class Command
             else
             {
                 reader.setCursor(startPos); //don't forget to reset cursor
-                String arg = reader.readQuotedString();
+                String arg = reader.readString();
                 return s ->
                 {
                     List<TextChannel> channelsByName = s.getTextChannelsByName(arg, true);
