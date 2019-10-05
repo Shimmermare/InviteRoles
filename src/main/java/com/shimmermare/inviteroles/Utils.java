@@ -54,7 +54,7 @@ public final class Utils
         return new EmbedBuilder()
                 .setColor(Color.RED)
                 .setAuthor("Warning!")
-                .setThumbnail("url") //TODO set url
+                .setThumbnail("https://cdn.discordapp.com/attachments/630175733708357642/630175767426367508/Exclamation_yellow_128.png")
                 .setDescription(warning)
                 .setFooter("InviteRole by Shimmermare")
                 .build();
