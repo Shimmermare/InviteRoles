@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -61,9 +62,9 @@ public class InviteRoles
     {
         LOGGER.debug("Reading application properties from resource");
         Properties properties = new Properties();
-        try
+        try (InputStream is = InviteRoles.class.getResourceAsStream("/.properties"))
         {
-            properties.load(InviteRoles.class.getResourceAsStream(".properties"));
+            properties.load(is);
         }
         catch (Exception e)
         {
