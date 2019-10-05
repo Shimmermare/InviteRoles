@@ -37,16 +37,14 @@ public final class Utils
     }
 
     /**
-     * Replace all except first 4 symbols in invite code with stars.
+     * Replace last 3 characters with {@code •}.
      *
      * @param code invite code.
      * @return censored invite code.
      */
     public static String censorInviteCode(String code)
     {
-        char[] stars = new char[code.length() - 4];
-        Arrays.fill(stars, '*');
-        return code.substring(0, 4) + new String(stars);
+        return code.substring(0, code.length() - 3) + "•••";
     }
 
     public static MessageEmbed createWarningEmbed(String warning)

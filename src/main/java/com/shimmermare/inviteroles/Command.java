@@ -99,7 +99,7 @@ public final class Command
         ServerSettings settings = instance.getServerSettings();
 
         settings.setWarningsEnabled(enabled);
-        channel.sendMessage("Warnings now **" + (enabled ? "enabled" : "disabled") + "**.").queue();
+        channel.sendMessage("Warnings now `" + (enabled ? "enabled" : "disabled") + "`.").queue();
         LOGGER.debug("Warnings on server {} were set to {} by user {}.",
                 server.getIdLong(), enabled, member.getIdLong());
         return 5;
@@ -114,7 +114,7 @@ public final class Command
         ServerInstance instance = source.getServerInstance();
         ServerSettings settings = instance.getServerSettings();
 
-        channel.sendMessage("Warnings are **" + (settings.isWarningsEnabled() ? "enabled" : "disabled") + "**.").queue();
+        channel.sendMessage("Warnings are `" + (settings.isWarningsEnabled() ? "enabled" : "disabled") + "`.").queue();
         LOGGER.debug("Warnings status on server {} requested by user {}", server.getIdLong(), member.getIdLong());
         return 4;
     }
@@ -133,13 +133,13 @@ public final class Command
         long role = settings.removeInviteRole(inviteCode);
         if (role == 0)
         {
-            channel.sendMessage("There is no invite role for invite " + censorInviteCode(inviteCode) + " set.").queue();
+            channel.sendMessage("There is no invite role for invite `" + censorInviteCode(inviteCode) + "` set.").queue();
             LOGGER.debug("User {} from server {} tried to remove non-existent invite role for invite {}",
                     member.getIdLong(), server.getIdLong(), inviteCode);
             return 1 << 16 | 3;
         }
 
-        channel.sendMessage("Invite role for invite " + censorInviteCode(inviteCode) + " was removed.").queue();
+        channel.sendMessage("Invite role for invite `" + censorInviteCode(inviteCode) + "` was removed.").queue();
         LOGGER.debug("Invite role {}/{} was removed from server {} by user {}",
                 inviteCode, role, server.getIdLong(), member.getIdLong());
         return 3;
@@ -160,22 +160,22 @@ public final class Command
         Role role = roleRetriever.apply(server);
         if (role == null)
         {
-            channel.sendMessage("Role in 'role' arg doesn't exist! " +
-                    "Don't forget to use quotes if role name contains whitespaces.").queue();
+            channel.sendMessage("Role in `role` argument doesn't exist! " +
+                    "Don't forget to use \"quotes\" if role name contains whitespaces.").queue();
             LOGGER.debug("User {} from server {} tried to set non-existent role for invite {}",
                     member.getIdLong(), server.getIdLong(), inviteCode);
             return 3 << 16 | 2;
         }
         if (!doesInviteExists(server, inviteCode))
         {
-            channel.sendMessage("Invite by code " + censorInviteCode(inviteCode) + " doesn't exist!").queue();
+            channel.sendMessage("Invite by code `" + censorInviteCode(inviteCode) + "` doesn't exist!").queue();
             LOGGER.debug("User {} from server {} tried to set invite role {} for non-existent invite {}",
                     member.getIdLong(), server.getIdLong(), role.getIdLong(), inviteCode);
             return 4 << 16 | 2;
         }
 
         settings.setInviteRole(inviteCode, role.getIdLong());
-        channel.sendMessage("Invite role '" + role.getName() + "' for invite '" + censorInviteCode(inviteCode) + "' was set.").queue();
+        channel.sendMessage("Invite role `" + role.getName() + "` for invite `" + censorInviteCode(inviteCode) + "` was set.").queue();
         LOGGER.debug("Invite role {}/{} was set by user {} from server {}",
                 inviteCode, role.getIdLong(), member.getIdLong(), server.getIdLong());
         return 2;
@@ -195,20 +195,20 @@ public final class Command
         long roleId = settings.getInviteRole(inviteCode);
         if (roleId == 0)
         {
-            channel.sendMessage("No invite role is set for '" + Utils.censorInviteCode(inviteCode) + "'.").queue();
+            channel.sendMessage("No invite role is set for `" + Utils.censorInviteCode(inviteCode) + "`.").queue();
             return 1 << 16 | 7;
         }
         Role role = server.getRoleById(roleId);
         if (role == null)
         {
-            channel.sendMessage("**Error**: invite role for '" + Utils.censorInviteCode(inviteCode)
-                    + "' is set to id " + roleId + " but such role doesn't exist.").queue();
+            channel.sendMessage("**Error**: invite role for `" + Utils.censorInviteCode(inviteCode)
+                    + "` is set to id `" + roleId + "` but such role doesn't exist.").queue();
             LOGGER.error("Unexpectedly invite role {} doesn't exist on server {}", roleId, server.getIdLong());
             return 2 << 16 | 7;
         }
 
-        channel.sendMessage("Invite role for '" + Utils.censorInviteCode(inviteCode)
-                + "' is **" + role.getName() + "**.").queue();
+        channel.sendMessage("Invite role for `" + Utils.censorInviteCode(inviteCode)
+                + "` is `" + role.getName() + "`.").queue();
         LOGGER.debug("Invite role info command for invite {} issued from server {} by user {}.",
                 inviteCode, server.getIdLong(), member.getIdLong());
         return 7;
