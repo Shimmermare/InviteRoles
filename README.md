@@ -2,11 +2,13 @@
 
 Automatically grant roles to users who joined through specific invite.  
 
-+ To setup, just use **`/inviteroles <invite_code> <role name or mention>`** - now everyone joining through this invite will receive the role.  
++ To setup, just use **`/inviteroles <invite_code> <role>`** - now everyone joining through this invite will receive the role.  
 + Use **`/inviteroles <invite_code> remove`** to disable.
 + **`/inviteroles`** without arguments will output current settings.  
-+ Sometimes bot will send a very importand log message. Default channel is System Message Channel, but you can set custom one with **`/inviteroles logchannel <channel name or mention>`**. **`default`** as channel will return setting to default. If you don't want to see warnings at all, use **`/inviteroles logchannel off`**.  
-
++ Sometimes bot will send a very important log message. Default channel is System Message Channel, but you can set custom one with **`/inviteroles logchannel <channel>`**. **`default`** as channel will return setting to default. If you don't want to see warnings at all, use **`/inviteroles logchannel off`**.  
++ You can use either mention or "quoted name" to specify role and channel arguments.  
++ If there is multiple roles/channels by the same name, the most recently created will be used. Prefer using mention in this case.  
+  
 **Note: to setup role giving you need to have on you role with *Manage Roles* permission and that role must be higher than the one you giving with invite.**  
 In other words, *Moderator* can setup *Member* role, but can't *Moderator* role.  
 
