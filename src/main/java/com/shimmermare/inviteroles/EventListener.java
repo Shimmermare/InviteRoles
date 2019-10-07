@@ -201,9 +201,24 @@ public class EventListener extends ListenerAdapter
     @Override
     public void onPrivateMessageReceived(@Nonnull PrivateMessageReceivedEvent event)
     {
-        /*
-        TODO mark that user sent feedback, send thank you message (but not for every incoming message)
-        introduce bot maintainer feature: all feedback messages get reposted to my DM
-         */
+        User author = event.getAuthor();
+        if (author.isBot() || author.isFake())
+        {
+            return;
+        }
+
+        Message message = event.getMessage();
+        PrivateChannel channel = message.getPrivateChannel();
+
+        //Send thank you message if this is first time feedback
+        channel.getHistoryBefore(message, 1).queue(history ->
+        {
+            if (history.getRetrievedHistory().isEmpty())
+            {
+                channel.sendMessage("**Thank you for feedback!** " +
+                        "\n• If you found a bug or have a suggestion, please create an issue at GitHub page: https://github.com/Shimmermare/InviteRoles " +
+                        "\n• If you want to contact creator, use PM: <@474857988075683850>").queue();
+            }
+        });
     }
 }
