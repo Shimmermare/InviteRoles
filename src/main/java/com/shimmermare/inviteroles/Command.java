@@ -173,6 +173,13 @@ public final class Command
                     member.getIdLong(), server.getIdLong(), role.getIdLong(), inviteCode);
             return 4 << 16 | 2;
         }
+        if (!server.getSelfMember().canInteract(role))
+        {
+            channel.sendMessage("Bot doesn't have enough permissions to interact with `" + role.getName() + "` role!").queue();
+            LOGGER.debug("User {} from server {} tried to set invite role {} which bot can't interact with due to insufficient permissions.",
+                    member.getIdLong(), server.getIdLong(), role.getIdLong());
+            return 5 << 16 | 2;
+        }
 
         settings.setInviteRole(inviteCode, role.getIdLong());
         channel.sendMessage("Invite role `" + role.getName() + "` for invite `" + censorInviteCode(inviteCode) + "` was set.").queue();

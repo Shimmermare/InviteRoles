@@ -34,8 +34,6 @@ import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
 import net.dv8tion.jda.api.events.role.RoleDeleteEvent;
-import net.dv8tion.jda.api.exceptions.HierarchyException;
-import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,34 +101,23 @@ public class EventListener extends ListenerAdapter
         if (role == null)
         {
             settings.removeInviteRole(inviteCode);
-            LOGGER.info("Invite role {} for invite {} to server {} doesn't exists.",
+            instance.sendWarning("Can't grant invite role `I:" + censorInviteCode(inviteCode)
+                    + "/R:n/a (" + roleId + ")`: role doesn't exist. Invite role is removed.");
+            LOGGER.debug("Invite role {}/{} at server {} doesn't exist. Invite role is removed.",
                     roleId, inviteCode, guild.getIdLong());
             return;
         }
-
-        guild.addRoleToMember(member, role).reason("Invite role from invite " + censorInviteCode(inviteCode)).queue(
-                success -> LOGGER.info("Granted invite role {} to member {} that used invite {} on server {}.",
-                        roleId, member.getIdLong(), inviteCode, guild.getIdLong()),
-                exception ->
-                {
-                    String msg = "Unable to grant role **" + role.getName() + "** from invite **"
-                            + censorInviteCode(inviteCode) + "** to **"
-                            + member.getEffectiveName() + "**!";
-                    if (exception instanceof InsufficientPermissionException || exception instanceof HierarchyException)
-                    {
-                        LOGGER.info("Failed to grant invite role {} to member {} that used invite {} on server {}.",
-                                roleId, member.getIdLong(), inviteCode, guild.getIdLong(), exception);
-                        msg += " Insufficient permissions.";
-                    }
-                    else
-                    {
-                        LOGGER.error("Failed to grant invite role {} to member {} that used invite {} on server {}.",
-                                roleId, member.getIdLong(), inviteCode, guild.getIdLong(), exception);
-                        msg += " Internal error.";
-                    }
-                    instance.sendWarning(msg);
-                }
-        );
+        if (!guild.getSelfMember().canInteract(role))
+        {
+            settings.removeInviteRole(inviteCode);
+            instance.sendWarning("Can't grant invite role `I:" + censorInviteCode(inviteCode)
+                    + "/R:" + role.getName() + " (" + roleId + ")`: insufficient permissions. Invite role is removed.");
+            LOGGER.debug("Can't grant invite role {}/{} at server {} " +
+                            "as bot doesn't have enough permissions. Invite role is removed.",
+                    inviteCode, roleId, guild.getIdLong());
+            return;
+        }
+        guild.addRoleToMember(member, role).reason("Invite role (" + censorInviteCode(inviteCode) + ")").queue();
     }
 
     @Override
