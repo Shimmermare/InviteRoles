@@ -51,8 +51,8 @@ public class DatabaseService implements AutoCloseable
     public boolean checkTables()
     {
         String createTableInviteRoles = "CREATE TABLE IF NOT EXISTS invite_roles (\n"
-                + "server bigint NOT NULL PRIMARY KEY, \n"
-                + "invite_code text NOT NULL, \n"
+                + "server bigint NOT NULL, \n"
+                + "invite_code text NOT NULL PRIMARY KEY, \n"
                 + "role bigint NOT NULL\n"
                 + ");";
         String createTableSettings = "CREATE TABLE IF NOT EXISTS settings (\n"
