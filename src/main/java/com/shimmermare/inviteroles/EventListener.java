@@ -97,6 +97,10 @@ public class EventListener extends ListenerAdapter
 
         String inviteCode = inviteUsesDelta.keySet().stream().findFirst().orElseThrow(RuntimeException::new);
         long roleId = settings.getInviteRole(inviteCode);
+        if (roleId == 0)
+        {
+            return;
+        }
         Role role = guild.getRoleById(roleId);
         if (role == null)
         {
