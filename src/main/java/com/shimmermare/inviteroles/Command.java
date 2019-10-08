@@ -99,6 +99,7 @@ public final class Command
         ServerSettings settings = instance.getServerSettings();
 
         settings.setWarningsEnabled(enabled);
+        instance.flagUpdated();
         channel.sendMessage("Warnings now `" + (enabled ? "enabled" : "disabled") + "`.").queue();
         LOGGER.debug("Warnings on server {} were set to {} by user {}.",
                 server.getIdLong(), enabled, member.getIdLong());
@@ -139,6 +140,7 @@ public final class Command
             return 1 << 16 | 3;
         }
 
+        instance.flagUpdated();
         channel.sendMessage("Invite role for invite `" + censorInviteCode(inviteCode) + "` was removed.").queue();
         LOGGER.debug("Invite role {}/{} was removed from server {} by user {}",
                 inviteCode, role, server.getIdLong(), member.getIdLong());
@@ -182,6 +184,7 @@ public final class Command
         }
 
         settings.setInviteRole(inviteCode, role.getIdLong());
+        instance.flagUpdated();
         channel.sendMessage("Invite role `" + role.getName() + "` for invite `" + censorInviteCode(inviteCode) + "` was set.").queue();
         LOGGER.debug("Invite role {}/{} was set by user {} from server {}",
                 inviteCode, role.getIdLong(), member.getIdLong(), server.getIdLong());

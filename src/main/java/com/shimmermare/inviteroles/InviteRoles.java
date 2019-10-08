@@ -38,23 +38,40 @@ import org.slf4j.LoggerFactory;
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class InviteRoles
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(InviteRoles.class);
 
+    private static final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+
+    static
+    {
+        executorService.execute(() -> Thread.currentThread().setName("DBUpdater"));
+    }
+
     private final String token;
+    private final String dbPath;
 
     private String version;
 
     private JDA jda;
+    private DatabaseService databaseService;
     private CommandDispatcher<CommandSource> commandDispatcher;
-    private Map<Long, ServerInstance> joinedServers = new HashMap<>();
+    private Map<Long, ServerInstance> joinedServers = new ConcurrentHashMap<>();
 
-    public InviteRoles(String token)
+    public InviteRoles(String token, String dbPath)
     {
         this.token = token;
+        this.dbPath = dbPath;
     }
 
     private void readProperties()
@@ -109,14 +126,70 @@ public class InviteRoles
         User selfUser = jda.getSelfUser();
         LOGGER.info("Successfully logged in as {} ({}).", selfUser.getName(), selfUser.getIdLong());
 
+        databaseService = DatabaseService.connect(dbPath);
+        if (databaseService == null)
+        {
+            System.exit(-1);
+        }
+        databaseService.checkTables();
+
+        checkGuilds();
+
+        executorService.scheduleAtFixedRate(() ->
+        {
+            for (ServerInstance instance : joinedServers.values())
+            {
+                if (instance.isUpdated())
+                {
+                    long server = instance.getServer().getIdLong();
+                    databaseService.setServerSettings(server, instance.getServerSettings());
+                    instance.setUpdatedFlag(false);
+                    LOGGER.debug("Database info of server {} updated by scheduler.", server);
+                }
+            }
+        }, 5L, 5L, TimeUnit.MINUTES);
+    }
+
+    private void checkGuilds()
+    {
         List<Guild> servers = jda.getGuilds();
         int totalMembers = 0;
         for (Guild server : servers)
         {
             totalMembers += server.getMembers().size();
-            newServerInstance(server); //temp til db impl
+
+            ServerSettings settings = databaseService.getServerSettings(server.getIdLong());
+            if (settings == null)
+            {
+                newServerInstance(server);
+            }
+            else
+            {
+                ServerInstance instance = newServerInstance(server, settings);
+                instance.checkInviteRoles();
+            }
         }
         LOGGER.info("Currently joined {} servers with a total of {} members.", servers.size(), totalMembers);
+    }
+
+    public void forceUpdateDatabase()
+    {
+        for (ServerInstance instance : joinedServers.values())
+        {
+            long server = instance.getServer().getIdLong();
+            databaseService.setServerSettings(server, instance.getServerSettings());
+            instance.setUpdatedFlag(false);
+        }
+    }
+
+    public void shutdown()
+    {
+        jda.shutdown();
+
+        forceUpdateDatabase();
+        databaseService.close();
+
+        System.exit(0);
     }
 
     public Map<Long, ServerInstance> getJoinedServers()
@@ -131,19 +204,34 @@ public class InviteRoles
 
     public ServerInstance newServerInstance(Guild server)
     {
-        ServerInstance instance = new ServerInstance(this, server, new ServerSettings());
+        return newServerInstance(server, new ServerSettings());
+    }
+
+    public ServerInstance newServerInstance(Guild server, ServerSettings settings)
+    {
+        ServerInstance instance = new ServerInstance(this, server, settings);
         joinedServers.put(server.getIdLong(), instance);
         return instance;
     }
 
     public ServerInstance removeServerInstance(long server)
     {
-        return joinedServers.remove(server);
+        ServerInstance instance = joinedServers.remove(server);
+        if (instance != null)
+        {
+            databaseService.deleteServerSettings(server);
+        }
+        return instance;
     }
 
     public CommandDispatcher<CommandSource> getCommandDispatcher()
     {
         return commandDispatcher;
+    }
+
+    public String getDbPath()
+    {
+        return dbPath;
     }
 
     public String getVersion()
@@ -160,17 +248,20 @@ public class InviteRoles
     {
         OptionParser optionParser = new OptionParser();
         OptionSpec<String> tokenSpec = optionParser.accepts("token").withRequiredArg().ofType(String.class).required();
+        OptionSpec<String> dbPathSpec = optionParser.accepts("db").withRequiredArg().ofType(String.class).required();
+
         OptionSet optionSet = optionParser.parse(args);
-
         String token = tokenSpec.value(optionSet);
+        String dbPath = dbPathSpec.value(optionSet);
 
-        InviteRoles inviteRoles = new InviteRoles(token);
+        InviteRoles inviteRoles = new InviteRoles(token, dbPath);
         inviteRoles.run();
 
         try
         {
             System.in.read();
             LOGGER.info("Application terminated from console. Goodbye!");
+            inviteRoles.shutdown();
             System.exit(0);
         }
         catch (IOException e)

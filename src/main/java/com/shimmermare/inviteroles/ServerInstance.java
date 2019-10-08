@@ -25,9 +25,15 @@
 package com.shimmermare.inviteroles;
 
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Invite;
 import net.dv8tion.jda.api.entities.TextChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ServerInstance
 {
@@ -38,12 +44,37 @@ public class ServerInstance
     private final ServerSettings serverSettings;
     private final InviteTracker inviteTracker;
 
+    private volatile boolean updatedFlag = true;
+
     public ServerInstance(InviteRoles bot, Guild server, ServerSettings serverSettings)
     {
         this.bot = bot;
         this.server = server;
         this.inviteTracker = new InviteTracker(server);
         this.serverSettings = serverSettings;
+    }
+
+    public void checkInviteRoles()
+    {
+        Set<String> inviteCodes = server.retrieveInvites().complete().stream()
+                .map(Invite::getCode).collect(Collectors.toSet());
+        Map<String, Long> inviteRoles = serverSettings.getInviteRoles();
+        for (Map.Entry<String, Long> inviteRole : new HashMap<>(inviteRoles).entrySet())
+        {
+            String code = inviteRole.getKey();
+            long role = inviteRole.getValue();
+            if (!inviteCodes.contains(code))
+            {
+                serverSettings.removeInviteRole(code);
+                LOGGER.debug("Invite role {}/{} removed because invite no longer exists.", code, role);
+                continue;
+            }
+            if (server.getRoleById(role) == null)
+            {
+                serverSettings.removeInviteRole(code);
+                LOGGER.debug("Invite role {}/{} removed because role no longer exists.", code, role);
+            }
+        }
     }
 
     public void sendWarning(String text)
@@ -66,6 +97,21 @@ public class ServerInstance
                 success -> LOGGER.debug("Warning was sent to server {}.", server.getIdLong()),
                 exception -> LOGGER.info("Failed to send warning to server {}.", server.getIdLong(), exception)
         );
+    }
+
+    public void flagUpdated()
+    {
+        this.updatedFlag = true;
+    }
+
+    public void setUpdatedFlag(boolean updatedFlag)
+    {
+        this.updatedFlag = updatedFlag;
+    }
+
+    public boolean isUpdated()
+    {
+        return updatedFlag;
     }
 
     public InviteRoles getBot()

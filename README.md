@@ -20,8 +20,7 @@ In other words, *Moderator* can setup *Member* role, but can't *Moderator* role.
   
 You can invite bot **[here](https://discordapp.com/oauth2/authorize?&client_id=630112341987688492&scope=bot&permissions=268438560)** or self-host it. To do that you need bot account ([*How to create and invite bot account?*](https://github.com/reactiflux/discord-irc/wiki/Creating-a-discord-bot-&-getting-a-token)) and Java 8. Bot requires `Manage Server`, `Manage Roles`, `View Channels`, `Send Messages` permissions to work. Start bot with `java -jar InviteRoles-VERSION_HERE.jar` and these arguments:  
 + `--token "your bot token here"` - bot token.  
-+ `--db-path "jdbc:sqlite:database_path_here.db"` - SQLite database path.  
-+ `--admin user_id` - Discord user who will receive all bot PMs and can send custom warnings to the joined servers. Optional.  
++ `--db "database_path_here.db"` - SQLite database path.  
   
 To exit application press ENTER.  
   

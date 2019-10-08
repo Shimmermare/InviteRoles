@@ -101,6 +101,7 @@ public class EventListener extends ListenerAdapter
         if (role == null)
         {
             settings.removeInviteRole(inviteCode);
+            instance.flagUpdated();
             instance.sendWarning("Can't grant invite role `I:" + censorInviteCode(inviteCode)
                     + "/R:n/a (" + roleId + ")`: role doesn't exist. Invite role is removed.");
             LOGGER.debug("Invite role {}/{} at server {} doesn't exist. Invite role is removed.",
@@ -110,6 +111,7 @@ public class EventListener extends ListenerAdapter
         if (!guild.getSelfMember().canInteract(role))
         {
             settings.removeInviteRole(inviteCode);
+            instance.flagUpdated();
             instance.sendWarning("Can't grant invite role `I:" + censorInviteCode(inviteCode)
                     + "/R:" + role.getName() + " (" + roleId + ")`: insufficient permissions. Invite role is removed.");
             LOGGER.debug("Can't grant invite role {}/{} at server {} " +
