@@ -115,21 +115,25 @@ public class DatabaseService implements AutoCloseable
         }
 
         String insertInviteRoles = "INSERT INTO invite_roles(server, invite_code, role) VALUES(?, ?, ?);";
-        try (PreparedStatement statement = connection.prepareStatement(insertInviteRoles))
+        Map<String, Long> inviteRoles = settings.getInviteRoles();
+        if (!inviteRoles.isEmpty())
         {
-            statement.setLong(1, server);
-            for (Map.Entry<String, Long> inviteRole : settings.getInviteRoles().entrySet())
+            try (PreparedStatement statement = connection.prepareStatement(insertInviteRoles))
             {
-                statement.setString(2, inviteRole.getKey());
-                statement.setLong(3, inviteRole.getValue());
-                statement.addBatch();
+                statement.setLong(1, server);
+                for (Map.Entry<String, Long> inviteRole : inviteRoles.entrySet())
+                {
+                    statement.setString(2, inviteRole.getKey());
+                    statement.setLong(3, inviteRole.getValue());
+                    statement.addBatch();
+                }
+                statement.executeBatch();
             }
-            statement.executeBatch();
-        }
-        catch (SQLException e)
-        {
-            LOGGER.error("Failed to insert invite roles of server {} to database.", server, e);
-            return false;
+            catch (SQLException e)
+            {
+                LOGGER.error("Failed to insert invite roles of server {} to database.", server, e);
+                return false;
+            }
         }
 
         String insertOrUpdateSettings = "INSERT INTO settings(server, warnings) VALUES(?, ?)\n" +
