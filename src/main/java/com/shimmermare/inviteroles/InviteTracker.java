@@ -88,8 +88,10 @@ public final class InviteTracker
             {
                 LOGGER.error("Server {} invite {} uses delta is negative ({}). This is shouldn't be possible.", guild.getIdLong(), invite.getCode(), deltaUses);
                 continue;
+            } 
+            if (deltaUses > 0) {
+                deltaUsesMap.put(invite.getCode(), deltaUses);
             }
-            deltaUsesMap.put(invite.getCode(), deltaUses);
         }
         deltaUses = Collections.unmodifiableMap(deltaUsesMap);
     }
