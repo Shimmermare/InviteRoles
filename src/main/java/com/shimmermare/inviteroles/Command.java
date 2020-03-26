@@ -75,7 +75,7 @@ public final class Command
                         .then(literal("disable").executes(c -> warningsSet(c, false)))
                         .executes(Command::warningsStatus)
                 )
-                .then(argument("invite-code", word())
+                .then(argument("invite-code", InviteArgumentType.invite())
                         .requires(s -> s.getMember().hasPermission(Permission.MANAGE_ROLES))
                         .then(literal("remove")
                                 .executes(Command::inviteRoleRemove)
@@ -383,6 +383,30 @@ public final class Command
                     return channelsByName.stream().max(Comparator.comparing(ISnowflake::getTimeCreated)).orElse(null);
                 };
             }
+        }
+    }
+
+    private static final class InviteArgumentType implements ArgumentType<String>
+    {
+        private InviteArgumentType()
+        {
+        }
+
+        static InviteArgumentType invite()
+        {
+            return new InviteArgumentType();
+        }
+
+        @Override
+        public String parse(StringReader reader) throws CommandSyntaxException
+        {
+            String string = reader.readStringUntil(' ');
+            reader.setCursor(reader.getCursor() - 1);
+            int lastSlash = string.lastIndexOf('/');
+            if (lastSlash >= 0 && lastSlash < string.length() - 1) {
+                string = string.substring(lastSlash + 1);
+            }
+            return string;
         }
     }
 }
