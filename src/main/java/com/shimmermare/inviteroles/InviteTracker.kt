@@ -7,17 +7,17 @@ class InviteTracker(private val guild: Guild) {
 
     /**
      * New invite uses since the last tracker update.
-     * Guaranteed to not have 0 or negative values. TODO <- test it
+     * Guaranteed to not have 0 or negative values.
      */
     var newUses: Map<String, Int> = emptyMap()
-    private set
+        private set
 
     fun update() {
         val invites = retrieveInvites()
         // Deleted invites doesn't count, i.e. no negative delta
         newUses = invites
-            .map { e -> e.key to e.value - previous.getOrDefault(e.key, 0) }
-            .filter { e -> e.second > 0 }
+            .map { it.key to it.value - previous.getOrDefault(it.key, 0) }
+            .filter { it.second > 0 }
             .toMap()
         previous = invites
     }
@@ -26,7 +26,7 @@ class InviteTracker(private val guild: Guild) {
      * Locking!
      */
     private fun retrieveInvites(): Map<String, Int> {
-        return guild.retrieveInvites().complete().map { i -> i.code to i.uses }.toMap()
+        return guild.retrieveInvites().complete().map { it.code to it.uses }.toMap()
     }
 }
 
