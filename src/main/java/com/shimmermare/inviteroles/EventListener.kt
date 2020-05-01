@@ -18,7 +18,7 @@ class EventListener(private val bot: InviteRoles) : ListenerAdapter() {
     override fun onGuildJoin(event: GuildJoinEvent) {
         val guild = event.guild
 
-        if (bot.onGuildJoin(guild)) {
+        if (bot.loadGuild(guild)) {
             LOGGER.info("Joined guild {} ({}) again. Welcome back!", guild.name, guild.id)
         } else {
             LOGGER.info("Joined guild {} ({}) for the first time. Hi!", guild.name, guild.id)

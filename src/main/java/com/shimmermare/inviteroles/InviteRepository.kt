@@ -84,19 +84,14 @@ class InviteRepository(dbPath: String) {
     fun delete(invite: BotGuildInvite) = delete(invite.code)
 
     fun delete(inviteCode: String) {
-        val sql = "DELETE FROM invites WHERE invite = ?;"
+        val sql = "DELETE FROM invites WHERE code = ?;"
 
         try {
             DriverManager.getConnection(url).use { connection ->
                 connection.prepareStatement(sql).use { statement ->
                     statement.setString(1, inviteCode)
-
-                    val result = statement.executeQuery()
-                    if (result.next() && result.getInt(1) > 0) {
-                        log.debug("Invite {} was deleted", inviteCode)
-                    } else {
-                        log.debug("Can't delete invite {} because it doesn't exist", inviteCode)
-                    }
+                    statement.execute()
+                    log.debug("Invite {} was deleted", inviteCode)
                 }
             }
         } catch (e: SQLException) {
@@ -105,9 +100,9 @@ class InviteRepository(dbPath: String) {
         }
     }
 
-    fun findAllOfGuild(guild: Guild): BotGuildInvites = findAllOfGuild(guild.idLong)
+    fun findAllOfGuild(guild: Guild): Set<BotGuildInvite> = findAllOfGuild(guild.idLong)
 
-    fun findAllOfGuild(guildId: Long): BotGuildInvites {
+    fun findAllOfGuild(guildId: Long): Set<BotGuildInvite> {
         val sql = "SELECT * FROM invites WHERE guild = ?;"
 
         try {
@@ -115,14 +110,14 @@ class InviteRepository(dbPath: String) {
                 connection.prepareStatement(sql).use { statement ->
                     statement.setLong(1, guildId)
 
-                    val invites: MutableMap<String, BotGuildInvite> = HashMap()
+                    val invites: MutableSet<BotGuildInvite> = HashSet()
                     val result = statement.executeQuery()
                     while (result.next()) {
                         val invite = BotGuildInvite(result.getString(1), result.getLong(2), result.getLong(3))
-                        invites[invite.code] = invite
+                        invites.add(invite)
                     }
                     log.debug("Found {} invites for guild {}", invites.size, guildId)
-                    return BotGuildInvites(guildId, invites)
+                    return invites
                 }
             }
         } catch (e: SQLException) {
@@ -131,8 +126,27 @@ class InviteRepository(dbPath: String) {
         }
     }
 
-    fun setAllOfGuild(invites: BotGuildInvites) {
-        invites.getAll().forEach(this::set)
+    fun setAllOfGuild(invites: Collection<BotGuildInvite>) {
+        val sql = "INSERT OR REPLACE INTO invites VALUES(?, ?, ?);"
+
+        try {
+            DriverManager.getConnection(url).use { connection ->
+                connection.prepareStatement(sql).use { statement ->
+                    invites.forEach { invite ->
+                        statement.setString(1, invite.code)
+                        statement.setLong(2, invite.guildId)
+                        statement.setLong(3, invite.roleId)
+                        statement.addBatch()
+                    }
+
+                    statement.executeBatch()
+                    log.debug("{} invites were set: {} ", invites.size, invites)
+                }
+            }
+        } catch (e: SQLException) {
+            log.error("Failed to set {} invites: {}", invites.size, invites, e)
+            throw IllegalStateException("Failed to set invite", e)
+        }
     }
 
     fun deleteAllOfGuild(guildId: Long) {
@@ -142,10 +156,8 @@ class InviteRepository(dbPath: String) {
             DriverManager.getConnection(url).use { connection ->
                 connection.prepareStatement(sql).use { statement ->
                     statement.setLong(1, guildId)
-
-                    val result = statement.executeQuery()
-                    val deleted = if (result.next()) result.getInt(1) else 0
-                    log.debug("{} invites for guild {} were deleted", deleted, guildId)
+                    statement.execute()
+                    log.debug("Invites for guild {} were deleted", guildId)
                 }
             }
         } catch (e: SQLException) {

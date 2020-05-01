@@ -8,22 +8,45 @@ import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.entities.Role
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.util.concurrent.ConcurrentHashMap
 
-
+/**
+ * Joined guild wrapper.
+ *
+ * Synchronized by instance. Performance is not a concern because if a guild has hundreds of users per second joining
+ * - this bot won't work anyway because of invite detection method.
+ *
+ * NOTE: please don't use [invites] directly - use the facade functions such as [getInvite], [addInvite] and so on.
+ */
 class BotGuild(
     private val bot: InviteRoles,
     val guild: Guild,
-    val settings: BotGuildSettings,
-    val invites: BotGuildInvites
+    settings: BotGuildSettings = BotGuildSettings(),
+    invites: Collection<BotGuildInvite> = emptyList()
 ) {
     private val log: Logger = LoggerFactory.getLogger(BotGuild::class.java.name + ".Guild:" + guild.id)
 
     private val tracker: InviteTracker = InviteTracker(guild)
 
+    /**
+     * Setting the settings will cause repository update.
+     */
+    @Volatile
+    var settings: BotGuildSettings = settings
+        @Synchronized get
+        @Synchronized set(value) {
+            if (field != value) {
+                bot.settingsRepository.set(guild, settings)
+                field = value
+            }
+        }
+
+    private val invites: MutableMap<String, BotGuildInvite> = ConcurrentHashMap(invites.map { it.code to it }.toMap())
+
     val id = guild.idLong
 
     fun onInviteDelete(code: String): BotGuildInvite? {
-        val invite = invites.remove(code)
+        val invite = removeInvite(code)
         return if (invite == null) {
             log.debug("Can't remove invite {} because it doesn't exist", code)
             null
@@ -34,14 +57,13 @@ class BotGuild(
     }
 
     fun onRoleDelete(role: Role): Set<BotGuildInvite> {
-        val roleId = role.idLong
-        val affectedInvites = invites.findWithRole(roleId)
+        val affectedInvites = getInvitesWithRole(role)
         return if (affectedInvites.isEmpty()) {
-            log.debug("No invites were affected by role {} removal", roleId)
+            log.debug("No invites were affected by role {} removal", role.id)
             emptySet()
         } else {
-            log.debug("{} invites were removed because their role {} was removed", affectedInvites.size, roleId)
-            affectedInvites.forEach(invites::remove)
+            log.debug("{} invites were removed because their role {} was removed", affectedInvites.size, role.id)
+            affectedInvites.forEach { removeInvite(it) }
             affectedInvites
         }
     }
@@ -108,7 +130,7 @@ class BotGuild(
             }
             newUses.isNotEmpty() -> {
                 val inviteCode = newUses.keys.first()
-                val invite = invites.get(inviteCode)
+                val invite = getInvite(inviteCode)
                 if (invite == null) {
                     log.debug("Can't grant roles to {}: invite {} doesn't have any roles set", member.id, inviteCode)
                     return
@@ -128,115 +150,57 @@ class BotGuild(
             }
         }
     }
-}
 
-/**
- * Gotta make sure that these two are thread-safe.
- */
+    @Synchronized
+    fun getInvite(code: String): BotGuildInvite? = invites[code]
 
-class BotGuildSettings(val guildId: Long) {
-    constructor(guild: Guild) : this(guild.idLong)
-
-    constructor(guildId: Long, warnings: Boolean = true) : this(guildId) {
-        this.backingWarnings = warnings
-    }
-
-    // Use backing property to avoid setting on 'updated' right after init
-    @Volatile
-    private var backingWarnings = true
-    var warnings: Boolean
-        @Synchronized get() {
-            return backingWarnings
+    /**
+     * Will cause repository update.
+     */
+    @Synchronized
+    fun addInvite(invite: BotGuildInvite) {
+        val old = invites[invite.code]
+        if (old != null || old != invite) {
+            bot.invitesRepository.set(invite)
         }
-        @Synchronized set(value) {
-            backingWarnings = value
-            updated = true
+    }
+
+    /**
+     * Will cause repository update.
+     */
+    @Synchronized
+    fun removeInvite(invite: BotGuildInvite) = removeInvite(invite.code)
+
+    /**
+     * Will cause repository update.
+     */
+    @Synchronized
+    fun removeInvite(code: String): BotGuildInvite? {
+        val invite = invites.remove(code)
+        if (invite != null) {
+            bot.invitesRepository.delete(code)
         }
-
-    @Volatile
-    var updated = false
-        @Synchronized get
-        @Synchronized set
-}
-
-
-class BotGuildInvites(val guildId: Long) {
-    constructor(guild: Guild) : this(guild.idLong)
-
-    constructor(guildId: Long, from: Map<String, BotGuildInvite>) : this(guildId) {
-        map.putAll(from)
-    }
-
-    private val map: MutableMap<String, BotGuildInvite> = HashMap()
-
-    // Content of the map on previous update
-    private var previousMap: Map<String, BotGuildInvite> = HashMap(map)
-
-    var updated = false
-        @Synchronized get
-        @Synchronized set(value) {
-            if (field && !value) previousMap = HashMap(map)
-            field = value
-        }
-
-    val size: Int
-        @Synchronized get() = map.size
-
-    @Synchronized
-    fun contains(code: String): Boolean = map.containsKey(code)
-
-    @Synchronized
-    fun get(code: String): BotGuildInvite? = map[code]
-
-    @Synchronized
-    fun put(invite: BotGuildInvite) {
-        map[invite.code] = invite
-        updated = true
-    }
-
-    @Synchronized
-    fun remove(invite: BotGuildInvite) {
-        if (map.remove(invite.code) != null) updated = true
-    }
-
-    @Synchronized
-    fun remove(code: String): BotGuildInvite? {
-        val invite = map.remove(code)
-        if (invite != null) updated = true
         return invite
     }
 
     @Synchronized
-    fun findWithRole(role: Role) = findWithRole(role.idLong)
+    fun getInvites(): Set<BotGuildInvite> = HashSet(invites.values)
 
     @Synchronized
-    fun findWithRole(roleId: Long) = map.filter { (_, i) -> i.roleId == roleId }.map { (_, i) -> i }.toSet()
+    fun getInvitesWithRole(role: Role): Set<BotGuildInvite> = getInvitesWithRole(role.idLong)
 
     @Synchronized
-    fun getAll(): Set<BotGuildInvite> = HashSet(map.values)
-
-    @Synchronized
-    fun findDeltaSinceLastUpdate(): Delta {
-        val added: MutableSet<BotGuildInvite> = HashSet()
-        val updated: MutableSet<BotGuildInvite> = HashSet()
-        val removed: MutableSet<BotGuildInvite> = HashSet()
-        map.forEach { (code, invite) ->
-            val invitePrevious = previousMap[code]
-            if (invitePrevious == null) {
-                added.add(invite)
-            } else if (invite != invitePrevious) {
-                updated.add(invite)
-            }
-        }
-        previousMap.forEach { (code, invite) ->
-            if (!map.containsKey(code)) {
-                removed.add(invite)
-            }
-        }
-        return Delta(added, updated, removed)
+    fun getInvitesWithRole(roleId: Long): Set<BotGuildInvite> {
+        return invites.asSequence().filter { it.value.roleId == roleId }.map { it.value }.toSet()
     }
-
-    data class Delta(val added: Set<BotGuildInvite>, val updated: Set<BotGuildInvite>, val removed: Set<BotGuildInvite>)
 }
 
-data class BotGuildInvite(val code: String, val guildId: Long, val roleId: Long)
+data class BotGuildSettings(
+    val warnings: Boolean = true
+)
+
+data class BotGuildInvite(
+    val code: String,
+    val guildId: Long,
+    val roleId: Long
+)

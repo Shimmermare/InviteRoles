@@ -35,6 +35,8 @@ class SettingsRepository(dbPath: String) {
         }
     }
 
+    fun find(guild: BotGuild): BotGuildSettings? = find(guild.id)
+
     fun find(guild: Guild): BotGuildSettings? = find(guild.idLong)
 
     fun find(guildId: Long): BotGuildSettings? {
@@ -47,8 +49,9 @@ class SettingsRepository(dbPath: String) {
 
                     val result = statement.executeQuery()
                     return if (result.next()) {
-                        val warnings = result.getBoolean(2)
-                        val settings = BotGuildSettings(guildId, warnings = warnings)
+                        val settings = BotGuildSettings(
+                            warnings = result.getBoolean(2)
+                        )
                         log.debug("Found settings for guild {}", guildId)
                         settings
                     } else {
@@ -63,25 +66,29 @@ class SettingsRepository(dbPath: String) {
         }
     }
 
-    fun set(settings: BotGuildSettings) {
+    fun set(guild: BotGuild, settings: BotGuildSettings) = set(guild.id, settings)
+
+    fun set(guild: Guild, settings: BotGuildSettings) = set(guild.idLong, settings)
+
+    fun set(guildId: Long, settings: BotGuildSettings) {
         val sql = "INSERT OR REPLACE INTO settings VALUES(?, ?);"
 
         try {
             DriverManager.getConnection(url).use { connection ->
                 connection.prepareStatement(sql).use { statement ->
-                    statement.setLong(1, settings.guildId)
+                    statement.setLong(1, guildId)
                     statement.setBoolean(2, settings.warnings)
                     statement.execute()
-                    log.debug("Settings for guild {} were set", settings.guildId)
+                    log.debug("Settings for guild {} were set", guildId)
                 }
             }
         } catch (e: SQLException) {
-            log.error("Failed to set settings for guild {}", settings.guildId, e)
+            log.error("Failed to set settings for guild {}", guildId, e)
             throw IllegalStateException("Failed to set guild settings", e)
         }
     }
 
-    fun delete(settings: BotGuildSettings) = delete(settings.guildId)
+    fun delete(guild: BotGuild) = delete(guild.id)
 
     fun delete(guildId: Long) {
         val sql = "DELETE FROM settings WHERE guild = ?;"
@@ -91,12 +98,8 @@ class SettingsRepository(dbPath: String) {
                 connection.prepareStatement(sql).use { statement ->
                     statement.setLong(1, guildId)
 
-                    val result = statement.executeQuery()
-                    if (result.next() && result.getInt(1) > 0) {
-                        log.debug("Settings for guild {} were deleted", guildId)
-                    } else {
-                        log.debug("Can't delete settings for guild {} because they don't exist", guildId)
-                    }
+                    statement.execute()
+                    log.debug("Settings for guild {} were deleted", guildId)
                 }
             }
         } catch (e: SQLException) {

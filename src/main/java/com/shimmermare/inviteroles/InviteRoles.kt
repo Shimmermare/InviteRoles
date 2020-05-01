@@ -16,24 +16,23 @@ import java.awt.Color
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import javax.security.auth.login.LoginException
-import kotlin.collections.HashMap
+import kotlin.collections.HashSet
 import kotlin.system.exitProcess
 
 /**
  * Main bot class. Not valid until run() is called.
  */
 class InviteRoles(private val token: String, dbPath: String) {
-    private val settingsRepository = SettingsRepository(dbPath)
-    private val invitesRepository = InviteRepository(dbPath)
-    private val repositoryUpdater = Executors.newSingleThreadScheduledExecutor()
+    val settingsRepository = SettingsRepository(dbPath)
+    val invitesRepository = InviteRepository(dbPath)
 
     // Accessible after run
     lateinit var properties: Properties
+        private set
     private lateinit var jda: JDA
     lateinit var commandDispatcher: CommandDispatcher<CommandSource>
+        private set
 
     private val guilds = ConcurrentHashMap<Long, BotGuild>()
 
@@ -43,7 +42,7 @@ class InviteRoles(private val token: String, dbPath: String) {
      * 2. Init repositories.
      * 3. Create JDA and setup Discord connection.
      * 4. Fetch settings and invites of joined guilds from repositories.
-     * 5. Start repository updater task.
+     * 5. Clear removed invites and roles.
      * 6. Init command dispatcher.
      * 7. Register event listener.
      * 8. Wait for console commands.
@@ -59,11 +58,7 @@ class InviteRoles(private val token: String, dbPath: String) {
 
         connectToDiscord()
         fetchJoinedGuilds()
-
-        // Update repositories with new changes once in 10 seconds
-        repositoryUpdater.scheduleAtFixedRate({
-            updateRepositories()
-        }, 10L, 10L, TimeUnit.SECONDS)
+        clearRemovedInvitesAndRoles()
 
         initCommandDispatcher()
         jda.addEventListener(EventListener(this))
@@ -139,29 +134,40 @@ class InviteRoles(private val token: String, dbPath: String) {
     private fun fetchJoinedGuilds() {
         jda.guilds
             .also { guilds -> log.info("Joined ${guilds.size} guilds.") }
-            .asSequence()
-            // Get settings from repository
-            .map { g -> g to settingsRepository.find(g.idLong) }
-            // Check for null settings: it shouldn't be possible in normal conditions
-            .map { gs ->
-                if (gs.second == null) {
+            .forEach { guild ->
+                if (!loadGuild(guild)) {
                     log.warn(
                         "Guild {} ({}) doesn't have settings in repository, possible DB corruption",
-                        gs.first.name, gs.first.id
+                        guild.name, guild.id
                     )
-                    gs.first to BotGuildSettings(gs.first)
-                } else {
-                    gs
                 }
             }
-            // Get invites from repository
-            .map { gs ->
-                val invites = invitesRepository.findAllOfGuild(gs.first.idLong)
-                log.info("Guild {} ({}) has {} active invites", gs.first.name, gs.first.id, invites.size)
-                Triple(gs.first, gs.second, invites)
+    }
+
+    /**
+     * Remove invites that have been removed on server or they don't have any existing role
+     *
+     * This is useful to catch stuff that was deleted when event listener wasn't active
+     */
+    private fun clearRemovedInvitesAndRoles() {
+        getGuilds().forEach { guild ->
+            val existingInvites = guild.guild.retrieveInvites().complete().map { it.code } // TODO coroutine candidate
+            guild.getInvites().forEach { invite ->
+                if (!existingInvites.contains(invite.code)) {
+                    log.debug("Invite {} doesn't exist in guild {} and will be removed", invite.code, guild.id)
+                    guild.removeInvite(invite)
+                }
+                if (guild.guild.getRoleById(invite.roleId) == null) {
+                    guild.removeInvite(invite)
+                    log.debug(
+                        "Role {} of invite {} doesn't exist in guild {} and invite will be removed",
+                        invite.roleId,
+                        invite.code,
+                        guild.id
+                    )
+                }
             }
-            // Add all guilds to tracker
-            .forEach { gsi -> addGuild(gsi.first, gsi.second as BotGuildSettings, gsi.third) }
+        }
     }
 
     /**
@@ -172,87 +178,70 @@ class InviteRoles(private val token: String, dbPath: String) {
         Commands.register(commandDispatcher)
     }
 
-    private fun updateRepositories() {
-        guilds.forEach { updateRepositoriesForGuild(it.value) }
-    }
-
-    /**
-     *  Update guild settings and invites in repositories if they were modified
-     */
-    private fun updateRepositoriesForGuild(guild: BotGuild) {
-        val settings = guild.settings
-        if (settings.updated) {
-            log.debug("Updating settings of guild {} in repository", guild.id)
-            settingsRepository.set(settings)
-            settings.updated = false
-        }
-
-        val invites = guild.invites
-        if (invites.updated) {
-            val delta = invites.findDeltaSinceLastUpdate()
-            log.debug("Updating invites of guild {} in repository, delta: {}", guild.id, delta)
-            delta.added.forEach(invitesRepository::set)
-            delta.updated.forEach(invitesRepository::set)
-            delta.removed.forEach(invitesRepository::delete)
-            invites.updated = false
-        }
-    }
-
     /**
      * Returns true if bot was used in this guild already
      */
-    fun onGuildJoin(guild: Guild): Boolean {
+    @Synchronized
+    fun loadGuild(guild: Guild): Boolean {
         val settingsFromRepo = settingsRepository.find(guild)
-        return if (settingsFromRepo != null) {
-            val invites = invitesRepository.findAllOfGuild(guild)
-            addGuild(guild, settingsFromRepo, invites)
-            true
-        } else {
-            val settings = BotGuildSettings(guild)
-            settingsRepository.set(settings)
-            val invites = BotGuildInvites(guild)
-            addGuild(guild, settings, invites)
-            false
-        }
+        val invites = invitesRepository.findAllOfGuild(guild)
+        addGuild(guild, settingsFromRepo, invites) // Pass settings if null - they'll be defaulted and saved
+        return settingsFromRepo != null
     }
 
-    fun getGuild(id: Long): BotGuild? {
-        return guilds[id]
-    }
-
+    @Synchronized
     fun getGuild(guild: Guild): BotGuild? {
         return guilds[guild.idLong]
     }
 
+    @Synchronized
+    fun getGuild(id: Long): BotGuild? {
+        return guilds[id]
+    }
+
+    @Synchronized
     @Throws(IllegalStateException::class)
     fun getGuildOrThrow(guild: Guild): BotGuild {
         return guilds[guild.idLong] ?: throw IllegalStateException("Guild ${guild.id} is not wrapped by the bot")
     }
 
-    fun addGuild(guild: Guild, settings: BotGuildSettings, invites: BotGuildInvites): BotGuild {
-        val instance = BotGuild(this, guild, settings, invites)
+    /**
+     * Track new guild.
+     *
+     * @param settings if null, default will be created and saved to repository.
+     */
+    @Synchronized
+    fun addGuild(
+        guild: Guild,
+        settings: BotGuildSettings?,
+        invites: Collection<BotGuildInvite> = emptyList()
+    ): BotGuild {
+        val settingsToUse = if (settings == null) {
+            val newSettings = BotGuildSettings()
+            settingsRepository.set(guild, newSettings)
+            newSettings
+        } else {
+            settings
+        }
+
+        val instance = BotGuild(this, guild, settingsToUse, invites)
         guilds[guild.idLong] = instance
         return instance
     }
 
+    @Synchronized
     fun removeGuild(id: Long): BotGuild? {
-        val guild = guilds.remove(id)
-        if (guild != null) {
-            updateRepositoriesForGuild(guild)
-        }
-        return guild
+        return guilds.remove(id)
     }
 
-    fun getGuilds(): Map<Long, BotGuild> {
-        return HashMap(guilds)
+    @Synchronized
+    fun getGuilds(): Set<BotGuild> {
+        return HashSet(guilds.values)
     }
 
     @Synchronized
     fun stop() {
         log.info("Shutting down...")
-
-        repositoryUpdater.shutdown()
-        updateRepositories()
         jda.shutdown()
         exitProcess(0)
     }

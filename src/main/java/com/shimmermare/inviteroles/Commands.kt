@@ -55,18 +55,18 @@ object Commands {
 
     private fun warningsSet(context: CommandContext<CommandSource>, enabled: Boolean): Int {
         val source = context.source
-        source.guild.settings.warnings = enabled
+        val guild = source.guild
+        guild.settings = guild.settings.copy(warnings = enabled)
         source.channel.sendMessage("Warnings now `${if (enabled) "enabled" else "disabled"}`.").queue()
-        LOGGER.debug("(guild: {}, user: {}): Warning status set to {}", source.guild.id, source.member.idLong, enabled)
+        LOGGER.debug("(guild: {}, user: {}): Warning status set to {}", guild.id, source.member.idLong, enabled)
         return 5
     }
 
     private fun warningsStatus(context: CommandContext<CommandSource>): Int {
         val source = context.source
-
-        source.channel.sendMessage("Warnings are `${if (source.guild.settings.warnings) "enabled" else "disabled"}`.")
-            .queue()
-        LOGGER.debug("Warnings status on server {} requested by user {}", source.guild.id, source.member.idLong)
+        val guild = source.guild
+        source.channel.sendMessage("Warnings are `${if (guild.settings.warnings) "enabled" else "disabled"}`.").queue()
+        LOGGER.debug("Warnings status on server {} requested by user {}", guild.id, source.member.idLong)
         return 4
     }
 
@@ -76,7 +76,7 @@ object Commands {
         val channel = source.channel
         val inviteCode = context.getArgument("invite-code", String::class.java)
 
-        val removed = guild.invites.remove(inviteCode)
+        val removed = guild.removeInvite(inviteCode)
         if (removed == null) {
             channel.sendMessage("Invite `${inviteCode.censorLast()}` is not used for roles.")
                 .queue()
@@ -129,7 +129,7 @@ object Commands {
             return 5 shl 16 or 2
         }
 
-        guild.invites.put(BotGuildInvite(inviteCode, guild.id, role.idLong))
+        guild.addInvite(BotGuildInvite(inviteCode, guild.id, role.idLong))
         channel.sendMessage("Role `${role.name}` is set for invite `${inviteCode.censorLast()}`.").queue()
         LOGGER.debug(
             "(guild: {}, user: {}): Role {} is set to invite {}", guild.id, member.idLong, inviteCode, role.idLong
@@ -145,12 +145,11 @@ object Commands {
 
         val inviteCode = context.getArgument("invite-code", String::class.java)
 
-        val invite = guild.invites.get(inviteCode)
+        val invite = guild.getInvite(inviteCode)
         if (invite == null) {
             channel.sendMessage("No role set for invite `${inviteCode.censorLast()}`.").queue()
             return 1 shl 16 or 7
         }
-
 
         val role = guild.guild.getRoleById(invite.roleId)
         if (role == null) {
@@ -177,7 +176,7 @@ object Commands {
         val builder = StringBuilder()
         builder.append("Warnings: ").append(if (guild.settings.warnings) "enabled" else "disabled").append('.')
 
-        val invites = guild.invites.getAll()
+        val invites = guild.getInvites()
         if (invites.isEmpty()) {
             builder.append("\nNo invites used.")
         } else {
@@ -195,7 +194,7 @@ object Commands {
             .setAuthor("Current Settings")
             .setColor(Color.MAGENTA)
             .setDescription(builder)
-            .setFooter("InviteRole by Shimmermare")
+            .setFooter("InviteRole v${source.bot.properties.getProperty("version")} by Shimmermare")
         channel.sendMessage(embedBuilder.build()).queue()
         LOGGER.debug("(guild: {}, user: {}): Requested settings", guild.id, member.idLong)
         return 1
