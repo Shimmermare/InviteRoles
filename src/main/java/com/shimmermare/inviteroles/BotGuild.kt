@@ -1,7 +1,6 @@
 package com.shimmermare.inviteroles
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException
-import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.Message
@@ -120,7 +119,7 @@ class BotGuild(
             newUses.size > 1 -> {
                 log.debug("Multiple users ({}) joined between invite tracker updates", newUses)
                 if (settings.warnings) {
-                    val warning = EmbedBuilder().buildWarning(
+                    val warning = bot.createWarningMessage(
                         "**Two or more users joined the server at the exact same time!**\n" +
                                 "Unfortunately bot can't detect used invite in this case, " +
                                 "so no invite roles will be granted and you should do this manually."

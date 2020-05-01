@@ -3,19 +3,15 @@ package com.shimmermare.inviteroles
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.StringReader
 import com.mojang.brigadier.arguments.ArgumentType
+import com.mojang.brigadier.arguments.BoolArgumentType.bool
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.RequiredArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.CommandSyntaxException
-import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.Permission
-import net.dv8tion.jda.api.entities.Guild
-import net.dv8tion.jda.api.entities.Member
-import net.dv8tion.jda.api.entities.Role
-import net.dv8tion.jda.api.entities.TextChannel
+import net.dv8tion.jda.api.entities.*
 import net.dv8tion.jda.api.utils.MiscUtil
 import org.slf4j.LoggerFactory
-import java.awt.Color
 import java.util.*
 import java.util.function.Function
 
@@ -24,50 +20,87 @@ class CommandSource(val bot: InviteRoles, val guild: BotGuild, val channel: Text
 /**
  * Bot commands.
  *
- * Brigadier requires to return magic int after command is finished.
- * Convention for this is:
- * Right half of low 16 bits is sub-command id.
- * Left half or high 16 bits is result of sub-command.
+ * Brigadier requires to return magic int - don't bother and always return 0, it's not used in this context.
  */
 object Commands {
     private val LOGGER = LoggerFactory.getLogger(Commands::class.java)
 
-    @JvmStatic
     fun register(commandDispatcher: CommandDispatcher<CommandSource>) {
-        commandDispatcher.register(literal("inviteroles")
-            .then(literal("warnings")
-                .requires { s -> s.member.hasPermission(Permission.ADMINISTRATOR) }
-                .then(literal("on").executes { c -> warningsSet(c, true) })
-                .then(literal("enable").executes { c -> warningsSet(c, true) })
-                .then(literal("off").executes { c -> warningsSet(c, false) })
-                .then(literal("disable").executes { c -> warningsSet(c, false) })
-                .executes(::warningsStatus)
+        val root = commandDispatcher.register(literal("inviteroles")
+            .then(literal("settings")
+                .requires { it.member.hasPermission(Permission.ADMINISTRATOR) }
+                .then(
+                    literal("warnings")
+                        .then(
+                            argument("value", bool())
+                                .executes(::warningsSet)
+                        )
+                )
+                .executes(::printSettings)
             )
-            .then(argument("invite-code", InviteArgumentType.invite())
+            .then(literal("invite")
                 .requires { s -> s.member.hasPermission(Permission.MANAGE_ROLES) }
-                .then(literal("remove").executes(::inviteRemove))
-                .then(argument("role", RoleArgumentType.role()).executes(::inviteSet))
-                .executes(::inviteNoArg)
+                .then(
+                    argument("invite-code", InviteArgumentType.invite())
+                        .then(literal("remove").executes(::inviteRemove))
+                        .then(argument("role", RoleArgumentType.role()).executes(::inviteSet))
+                )
+                .executes(::printInvites)
             )
-            .executes(::executeNoArg)
+            .executes(::printHelp)
+        )
+
+        // Short alias
+        commandDispatcher.register(
+            literal("ir")
+                .executes(::printHelp)
+                .redirect(root)
         )
     }
 
-    private fun warningsSet(context: CommandContext<CommandSource>, enabled: Boolean): Int {
+    private fun printSettings(context: CommandContext<CommandSource>): Int {
         val source = context.source
         val guild = source.guild
-        guild.settings = guild.settings.copy(warnings = enabled)
-        source.channel.sendMessage("Warnings now `${if (enabled) "enabled" else "disabled"}`.").queue()
-        LOGGER.debug("(guild: {}, user: {}): Warning status set to {}", guild.id, source.member.idLong, enabled)
+        val settings = guild.settings
+
+        val fields = listOf(
+            MessageEmbed.Field("Warnings", settings.warnings.toString(), true)
+        )
+        val message = source.bot.createInfoMessage("**Current settings**", fields = fields)
+        source.channel.sendMessage(message).queue()
+        LOGGER.debug("(guild: {}, user: {}): Printed current settings", guild.id, source.member.idLong)
+        return 0
+    }
+
+    private fun warningsSet(context: CommandContext<CommandSource>): Int {
+        val source = context.source
+        val guild = source.guild
+        val warnings = context.getArgument("value", Boolean::class.java)
+        guild.settings = guild.settings.copy(warnings = warnings)
+        source.channel.sendMessage("Warnings set to **`$warnings`**.").queue()
+        LOGGER.debug("(guild: {}, user: {}): Warning status set to {}", guild.id, source.member.idLong, warnings)
         return 5
     }
 
-    private fun warningsStatus(context: CommandContext<CommandSource>): Int {
+    private fun printInvites(context: CommandContext<CommandSource>): Int {
         val source = context.source
         val guild = source.guild
-        source.channel.sendMessage("Warnings are `${if (guild.settings.warnings) "enabled" else "disabled"}`.").queue()
-        LOGGER.debug("Warnings status on server {} requested by user {}", guild.id, source.member.idLong)
-        return 4
+
+        val fields = guild.getInvites().map { invite ->
+            MessageEmbed.Field(
+                invite.code.censorLast(),
+                "**${guild.guild.getRoleById(invite.roleId)?.name}**",
+                true
+            )
+        }
+        val message = if (fields.isEmpty()) {
+            source.bot.createInfoMessage("**No active invites with roles**")
+        } else {
+            source.bot.createInfoMessage("**Invites with active roles**", fields = fields)
+        }
+        source.channel.sendMessage(message).queue()
+        LOGGER.debug("(guild: {}, user: {}): Printed active invites", guild.id, source.member.idLong)
+        return 0
     }
 
     private fun inviteRemove(context: CommandContext<CommandSource>): Int {
@@ -137,66 +170,17 @@ object Commands {
         return 2
     }
 
-    private fun inviteNoArg(context: CommandContext<CommandSource>): Int {
+    private fun printHelp(context: CommandContext<CommandSource>): Int {
         val source = context.source
-        val member = source.member
-        val channel = source.channel
         val guild = source.guild
 
-        val inviteCode = context.getArgument("invite-code", String::class.java)
-
-        val invite = guild.getInvite(inviteCode)
-        if (invite == null) {
-            channel.sendMessage("No role set for invite `${inviteCode.censorLast()}`.").queue()
-            return 1 shl 16 or 7
-        }
-
-        val role = guild.guild.getRoleById(invite.roleId)
-        if (role == null) {
-            channel.sendMessage("Role that is set for invite `${inviteCode.censorLast()}` doesn't exist.")
-                .queue()
-            LOGGER.error(
-                "(guild: {}, user: {}): Unexpectedly role {} for invite {} doesn't exist",
-                guild.id, member.id, invite.roleId, inviteCode
-            )
-            return 2 shl 16 or 7
-        }
-
-        channel.sendMessage("Role for invite `${inviteCode.censorLast()}` is `${role.name}`.").queue()
-        LOGGER.debug("(guild: {}, user: {}): Requested role for invite {}", guild.id, member.id, inviteCode)
-        return 7
-    }
-
-    private fun executeNoArg(context: CommandContext<CommandSource>): Int {
-        val source = context.source
-        val member = source.member
-        val channel = source.channel
-        val guild = source.guild
-
-        val builder = StringBuilder()
-        builder.append("Warnings: ").append(if (guild.settings.warnings) "enabled" else "disabled").append('.')
-
-        val invites = guild.getInvites()
-        if (invites.isEmpty()) {
-            builder.append("\nNo invites used.")
-        } else {
-            invites.forEach { invite ->
-                val role = guild.guild.getRoleById(invite.roleId)
-                builder
-                    .append("\n• ")
-                    .append(invite.code.censorLast())
-                    .append(" / ")
-                    .append(role?.name ?: "deleted role")
-            }
-        }
-
-        val embedBuilder = EmbedBuilder()
-            .setAuthor("Current Settings")
-            .setColor(Color.MAGENTA)
-            .setDescription(builder)
-            .setFooter("InviteRole v${source.bot.properties.getProperty("version")} by Shimmermare")
-        channel.sendMessage(embedBuilder.build()).queue()
-        LOGGER.debug("(guild: {}, user: {}): Requested settings", guild.id, member.idLong)
+        val githubUrl = source.bot.properties.getProperty("github_page")
+        val embed = source.bot.createInfoMessage(
+            "Looking for command guide?",
+            "[Check out GitHub page: $githubUrl]($githubUrl)"
+        )
+        source.channel.sendMessage(embed).queue()
+        LOGGER.debug("(guild: {}, user: {}): Requested settings", guild.id, source.member.idLong)
         return 1
     }
 

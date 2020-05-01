@@ -246,6 +246,38 @@ class InviteRoles(private val token: String, dbPath: String) {
         exitProcess(0)
     }
 
+    fun createWarningMessage(warning: String): MessageEmbed {
+        val footer = getMessageFooter()
+        return EmbedBuilder()
+            .setColor(Color.RED)
+            .setTitle("Warning!")
+            .setThumbnail(properties.getProperty("warning_icon_url"))
+            .setDescription(warning)
+            .setFooter(footer.first, footer.second)
+            .build()
+    }
+
+    fun createInfoMessage(
+        title: String,
+        description: String? = null,
+        fields: Collection<MessageEmbed.Field> = emptyList()
+    ): MessageEmbed {
+        val footer = getMessageFooter()
+        val builder = EmbedBuilder()
+            .setColor(Color.ORANGE)
+            .setTitle(title)
+            .setDescription(description)
+            .setFooter(footer.first, footer.second)
+        fields.forEach { builder.addField(it) }
+        return builder.build()
+    }
+
+    private fun getMessageFooter(): Pair<String, String> {
+        val text = "InviteRoles v${properties.getProperty("version")} by v${properties.getProperty("author.name")}"
+        val icon = properties.getProperty("author.icon_url")
+        return text to icon
+    }
+
     companion object {
         private val log: Logger = LoggerFactory.getLogger(InviteRoles::class.java)
     }
@@ -274,15 +306,4 @@ fun String.censorLast(count: Int = 3, char: Char = '•'): String {
         chars[i] = if (length - i <= count) char else this[i]
     }
     return String(chars)
-}
-
-fun EmbedBuilder.buildWarning(warning: String): MessageEmbed {
-    return EmbedBuilder()
-        .setColor(Color.RED)
-        .setAuthor("Warning!")
-        // Ugh, hardcoded url
-        .setThumbnail("https://cdn.discordapp.com/attachments/630175733708357642/630175767426367508/Exclamation_yellow_128.png")
-        .setDescription(warning)
-        .setFooter("InviteRole by Shimmermare")
-        .build()
 }
