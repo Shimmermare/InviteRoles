@@ -1,7 +1,10 @@
 package com.shimmermare.inviteroles
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException
-import net.dv8tion.jda.api.entities.*
+import net.dv8tion.jda.api.entities.Guild
+import net.dv8tion.jda.api.entities.Member
+import net.dv8tion.jda.api.entities.Message
+import net.dv8tion.jda.api.entities.Role
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -153,6 +156,9 @@ class BotGuildInvites(val guildId: Long) {
             if (field && !value) previousMap = HashMap(map)
             field = value
         }
+
+    val size: Int
+        @Synchronized get() = map.size
 
     @Synchronized
     fun contains(code: String): Boolean = map.containsKey(code)

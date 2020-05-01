@@ -78,7 +78,7 @@ object Commands {
 
         val removed = guild.invites.remove(inviteCode)
         if (removed == null) {
-            channel.sendMessage("Invite `${hideInvite(inviteCode)}` is not used for roles.")
+            channel.sendMessage("Invite `${inviteCode.censorLast()}` is not used for roles.")
                 .queue()
             LOGGER.debug(
                 "(guild: {}, user: {}): Tried to remove non-existent invite {}",
@@ -87,7 +87,7 @@ object Commands {
             return 1 shl 16 or 3
         }
 
-        channel.sendMessage("Roles were cleared from invite `${hideInvite(inviteCode)}`.").queue()
+        channel.sendMessage("Roles were cleared from invite `${inviteCode.censorLast()}`.").queue()
         LOGGER.debug("(guild: {}, user: {}): Removed invite {}", guild.id, source.member.idLong, inviteCode)
         return 3
     }
@@ -112,7 +112,7 @@ object Commands {
         }
 
         if (!doesInviteExists(guild, inviteCode)) {
-            channel.sendMessage("Invite `${hideInvite(inviteCode)}` doesn't exist!").queue()
+            channel.sendMessage("Invite `${inviteCode.censorLast()}` doesn't exist!").queue()
             LOGGER.debug(
                 "(guild: {}, user: {}): Tried to set role {} for non-existent invite {}",
                 guild.id, member.idLong, role.idLong, inviteCode
@@ -130,7 +130,7 @@ object Commands {
         }
 
         guild.invites.put(BotGuildInvite(inviteCode, guild.id, role.idLong))
-        channel.sendMessage("Role `${role.name}` is set for invite `${hideInvite(inviteCode)}`.").queue()
+        channel.sendMessage("Role `${role.name}` is set for invite `${inviteCode.censorLast()}`.").queue()
         LOGGER.debug(
             "(guild: {}, user: {}): Role {} is set to invite {}", guild.id, member.idLong, inviteCode, role.idLong
         )
@@ -147,14 +147,14 @@ object Commands {
 
         val invite = guild.invites.get(inviteCode)
         if (invite == null) {
-            channel.sendMessage("No role set for invite `${hideInvite(inviteCode)}`.").queue()
+            channel.sendMessage("No role set for invite `${inviteCode.censorLast()}`.").queue()
             return 1 shl 16 or 7
         }
 
 
         val role = guild.guild.getRoleById(invite.roleId)
         if (role == null) {
-            channel.sendMessage("Role that is set for invite `${hideInvite(inviteCode)}` doesn't exist.")
+            channel.sendMessage("Role that is set for invite `${inviteCode.censorLast()}` doesn't exist.")
                 .queue()
             LOGGER.error(
                 "(guild: {}, user: {}): Unexpectedly role {} for invite {} doesn't exist",
@@ -163,7 +163,7 @@ object Commands {
             return 2 shl 16 or 7
         }
 
-        channel.sendMessage("Role for invite `${hideInvite(inviteCode)}` is `${role.name}`.").queue()
+        channel.sendMessage("Role for invite `${inviteCode.censorLast()}` is `${role.name}`.").queue()
         LOGGER.debug("(guild: {}, user: {}): Requested role for invite {}", guild.id, member.id, inviteCode)
         return 7
     }
@@ -185,7 +185,7 @@ object Commands {
                 val role = guild.guild.getRoleById(invite.roleId)
                 builder
                     .append("\n• ")
-                    .append(hideInvite(invite.code))
+                    .append(invite.code.censorLast())
                     .append(" / ")
                     .append(role?.name ?: "deleted role")
             }
