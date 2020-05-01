@@ -23,11 +23,8 @@ class InviteRepository(dbPath: String) {
         try {
             DriverManager.getConnection(url).use { connection ->
                 connection.createStatement().use { statement ->
-                    if (statement.execute(sql)) {
-                        log.debug("Invite table didn't exist and was created")
-                    } else {
-                        log.debug("Invite table already exists")
-                    }
+                    statement.execute(sql)
+                    log.debug("Initialized invites table")
                 }
             }
         } catch (e: SQLException) {

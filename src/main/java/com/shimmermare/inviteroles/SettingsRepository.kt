@@ -22,11 +22,8 @@ class SettingsRepository(dbPath: String) {
         try {
             DriverManager.getConnection(url).use { connection ->
                 connection.createStatement().use { statement ->
-                    if (statement.execute(sql)) {
-                        log.debug("Settings table didn't exist and was created")
-                    } else {
-                        log.debug("Settings table already exists")
-                    }
+                    statement.execute(sql)
+                    log.debug("Initialized settings table")
                 }
             }
         } catch (e: SQLException) {
