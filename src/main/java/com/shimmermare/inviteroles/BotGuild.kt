@@ -1,6 +1,7 @@
 package com.shimmermare.inviteroles
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException
+import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.Message
@@ -96,10 +97,31 @@ class BotGuild(
         when {
             newUses.size > 1 -> {
                 log.debug("Multiple users ({}) joined between invite tracker updates", newUses)
-                // TODO send undefined invite warning
+                if (settings.warnings) {
+                    val warning = EmbedBuilder().buildWarning(
+                        "**Two or more users joined the server at the exact same time!**\n" +
+                                "Unfortunately bot can't detect used invite in this case, " +
+                                "so no invite roles will be granted and you should do this manually."
+                    )
+                    guild.systemChannel?.sendMessage(warning)
+                }
             }
             newUses.isNotEmpty() -> {
-                // TODO grant roles
+                val inviteCode = newUses.keys.first()
+                val invite = invites.get(inviteCode)
+                if (invite == null) {
+                    log.debug("Can't grant roles to {}: invite {} doesn't have any roles set", member.id, inviteCode)
+                    return
+                }
+
+                val role = guild.getRoleById(invite.roleId)
+                if (role == null) {
+                    log.debug("Can't grant roles to {}: invite {} role {} not exists", inviteCode, invite.roleId)
+                    return
+                }
+
+                guild.addRoleToMember(member, role).reason("Joined by invite ${inviteCode.censorLast()}").queue()
+                log.debug("Granted role {} to {} for joining with invite {}", role.id, member.id, inviteCode)
             }
             else -> {
                 log.error("Somehow tracker didn't found new invite uses when a new member joined")

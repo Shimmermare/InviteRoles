@@ -287,7 +287,7 @@ fun String.censorLast(count: Int = 3, char: Char = '•'): String {
     return String(chars)
 }
 
-fun EmbedBuilder.buildWarning(warning: String?): MessageEmbed {
+fun EmbedBuilder.buildWarning(warning: String): MessageEmbed {
     return EmbedBuilder()
         .setColor(Color.RED)
         .setAuthor("Warning!")
