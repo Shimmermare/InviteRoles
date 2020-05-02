@@ -123,7 +123,7 @@ class InviteRepository(dbPath: String) {
         }
     }
 
-    fun setAllOfGuild(invites: Collection<BotGuildInvite>) {
+    fun setAll(invites: Collection<BotGuildInvite>) {
         val sql = "INSERT OR REPLACE INTO invites VALUES(?, ?, ?);"
 
         try {
