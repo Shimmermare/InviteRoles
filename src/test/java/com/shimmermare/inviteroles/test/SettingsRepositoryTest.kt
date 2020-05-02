@@ -4,6 +4,7 @@ import com.shimmermare.inviteroles.BotGuildSettings
 import com.shimmermare.inviteroles.SettingsRepository
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import java.sql.Connection
 import java.sql.DriverManager
 
 object SettingsRepositoryTest {
@@ -11,106 +12,96 @@ object SettingsRepositoryTest {
 
     @Test
     fun initsTable() {
-        val connection = DriverManager.getConnection("jdbc:sqlite:$dbPath")
-
-        val repository = SettingsRepository(dbPath)
-        repository.initTables()
-
-        // This will throw if there's no table
-        connection.createStatement().use { statement ->
-            statement.execute("SELECT * FROM settings LIMIT 1;")
+        openInMemory { connection, repository ->
+            repository.initTables()
+            // This will throw if there's no table
+            connection.createStatement().use { statement ->
+                statement.execute("SELECT * FROM settings LIMIT 1;")
+            }
         }
-
-        connection.close()
     }
 
     @Test
     fun finds() {
         val guildId = 123456789L
-
-        val connection = DriverManager.getConnection("jdbc:sqlite:$dbPath")
-        val repository = SettingsRepository(dbPath)
-        repository.initTables()
-
-        connection.createStatement().use { statement ->
-            statement.execute("INSERT INTO settings VALUES (${guildId}, true);")
+        openInMemoryAndInit { connection, repository ->
+            connection.createStatement().use { statement ->
+                statement.execute("INSERT INTO settings VALUES (${guildId}, true);")
+            }
+            assertNull(repository.find(987654321L))
+            assertEquals(BotGuildSettings(warnings = true), repository.find(guildId))
         }
-
-        assertNull(repository.find(987654321L))
-        assertEquals(BotGuildSettings(warnings = true), repository.find(guildId))
-
-        connection.close()
     }
 
     @Test
     fun setsNew() {
         val guildId = 123456789L
+        openInMemoryAndInit { connection, repository ->
+            val settings = BotGuildSettings(true)
+            repository.set(guildId, settings)
 
-        val connection = DriverManager.getConnection("jdbc:sqlite:$dbPath")
-        val repository = SettingsRepository(dbPath)
-        repository.initTables()
-
-        val settings = BotGuildSettings(true)
-        repository.set(guildId, settings)
-
-        connection.createStatement().use { statement ->
-            val result = statement.executeQuery("SELECT * FROM settings WHERE guild = $guildId;")
-            assertTrue { result.next() }
-            assertEquals(guildId, result.getLong(1))
-            assertEquals(settings.warnings, result.getBoolean(2))
+            connection.createStatement().use { statement ->
+                val result = statement.executeQuery("SELECT * FROM settings WHERE guild = $guildId;")
+                assertTrue { result.next() }
+                assertEquals(guildId, result.getLong(1))
+                assertEquals(settings.warnings, result.getBoolean(2))
+            }
         }
-
-        connection.close()
     }
 
     @Test
     fun setsExisting() {
         val guildId = 123456789L
+        openInMemoryAndInit { connection, repository ->
+            val old = BotGuildSettings(true)
 
-        val connection = DriverManager.getConnection("jdbc:sqlite:$dbPath")
-        val repository = SettingsRepository(dbPath)
-        repository.initTables()
+            connection.createStatement().use { statement ->
+                statement.execute("INSERT INTO settings VALUES ($guildId, ${old.warnings});")
+            }
 
-        val old = BotGuildSettings(true)
+            val new = old.copy(warnings = false)
+            repository.set(guildId, new)
 
-        connection.createStatement().use { statement ->
-            statement.execute("INSERT INTO settings VALUES ($guildId, ${old.warnings});")
+            connection.createStatement().use { statement ->
+                val result = statement.executeQuery("SELECT * FROM settings WHERE guild = $guildId;")
+                assertTrue(result.next())
+                assertEquals(guildId, result.getLong(1))
+                assertEquals(new.warnings, result.getBoolean(2))
+            }
         }
-
-        val new = old.copy(warnings = false)
-        repository.set(guildId, new)
-
-        connection.createStatement().use { statement ->
-            val result = statement.executeQuery("SELECT * FROM settings WHERE guild = $guildId;")
-            assertTrue(result.next())
-            assertEquals(guildId, result.getLong(1))
-            assertEquals(new.warnings, result.getBoolean(2))
-        }
-
-        connection.close()
     }
 
     @Test
     fun deletes() {
         val guildId = 123456789L
+        openInMemoryAndInit { connection, repository ->
+            val settings = BotGuildSettings(true)
 
-        val connection = DriverManager.getConnection("jdbc:sqlite:$dbPath")
-        val repository = SettingsRepository(dbPath)
-        repository.initTables()
+            connection.createStatement().use { statement ->
+                statement.execute("INSERT INTO settings VALUES ($guildId, ${settings.warnings});")
+            }
 
-        val settings = BotGuildSettings(true)
+            repository.delete(guildId)
 
-        connection.createStatement().use { statement ->
-            statement.execute("INSERT INTO settings VALUES ($guildId, ${settings.warnings});")
+            connection.createStatement().use { statement ->
+                val result = statement.executeQuery("SELECT * FROM settings WHERE guild = $guildId;")
+                assertFalse(result.next())
+            }
         }
+    }
 
-        repository.delete(guildId)
-
-        connection.createStatement().use { statement ->
-            val result = statement.executeQuery("SELECT * FROM settings WHERE guild = $guildId;")
-            assertFalse(result.next())
+    private inline fun openInMemoryAndInit(block: (Connection, SettingsRepository) -> Unit) {
+        openInMemory { connection, repository ->
+            repository.initTables()
+            block.invoke(connection, repository)
         }
+    }
 
+    private inline fun openInMemory(block: (Connection, SettingsRepository) -> Unit) {
+        val db = "file::memory:?cache=shared"
+        val connection = DriverManager.getConnection("jdbc:sqlite:$db")
+        val repository = SettingsRepository(db)
+        block.invoke(connection, repository)
         connection.close()
     }
 }
