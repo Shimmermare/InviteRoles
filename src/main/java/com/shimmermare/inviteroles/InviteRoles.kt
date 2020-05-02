@@ -53,7 +53,7 @@ class InviteRoles(private val token: String, dbPath: String) {
     fun run() {
         loadProperties()
 
-        settingsRepository.initTables()
+        settingsRepository.initTable()
         invitesRepository.initTable()
 
         connectToDiscord()

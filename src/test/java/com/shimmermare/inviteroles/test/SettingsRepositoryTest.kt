@@ -8,12 +8,9 @@ import java.sql.Connection
 import java.sql.DriverManager
 
 object SettingsRepositoryTest {
-    private val dbPath = "file::memory:?cache=shared"
-
     @Test
     fun initsTable() {
         openInMemory { connection, repository ->
-            repository.initTables()
             // This will throw if there's no table
             connection.createStatement().use { statement ->
                 statement.execute("SELECT * FROM settings LIMIT 1;")
@@ -24,7 +21,7 @@ object SettingsRepositoryTest {
     @Test
     fun finds() {
         val guildId = 123456789L
-        openInMemoryAndInit { connection, repository ->
+        openInMemory { connection, repository ->
             connection.createStatement().use { statement ->
                 statement.execute("INSERT INTO settings VALUES (${guildId}, true);")
             }
@@ -36,7 +33,7 @@ object SettingsRepositoryTest {
     @Test
     fun setsNew() {
         val guildId = 123456789L
-        openInMemoryAndInit { connection, repository ->
+        openInMemory { connection, repository ->
             val settings = BotGuildSettings(true)
             repository.set(guildId, settings)
 
@@ -52,7 +49,7 @@ object SettingsRepositoryTest {
     @Test
     fun setsExisting() {
         val guildId = 123456789L
-        openInMemoryAndInit { connection, repository ->
+        openInMemory { connection, repository ->
             val old = BotGuildSettings(true)
 
             connection.createStatement().use { statement ->
@@ -74,7 +71,7 @@ object SettingsRepositoryTest {
     @Test
     fun deletes() {
         val guildId = 123456789L
-        openInMemoryAndInit { connection, repository ->
+        openInMemory { connection, repository ->
             val settings = BotGuildSettings(true)
 
             connection.createStatement().use { statement ->
@@ -90,17 +87,11 @@ object SettingsRepositoryTest {
         }
     }
 
-    private inline fun openInMemoryAndInit(block: (Connection, SettingsRepository) -> Unit) {
-        openInMemory { connection, repository ->
-            repository.initTables()
-            block.invoke(connection, repository)
-        }
-    }
-
     private inline fun openInMemory(block: (Connection, SettingsRepository) -> Unit) {
         val db = "file::memory:?cache=shared"
         val connection = DriverManager.getConnection("jdbc:sqlite:$db")
         val repository = SettingsRepository(db)
+        repository.initTable()
         block.invoke(connection, repository)
         connection.close()
     }

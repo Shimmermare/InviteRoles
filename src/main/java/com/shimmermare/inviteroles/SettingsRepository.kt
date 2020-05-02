@@ -13,7 +13,7 @@ class SettingsRepository(dbPath: String) {
     private val log: Logger = LoggerFactory.getLogger(SettingsRepository::class.java)
     private val url = "jdbc:sqlite:$dbPath"
 
-    fun initTables() {
+    fun initTable() {
         val sql = ("CREATE TABLE IF NOT EXISTS settings (\n"
                 + "guild bigint NOT NULL PRIMARY KEY, \n"
                 + "warnings bit NOT NULL\n"
