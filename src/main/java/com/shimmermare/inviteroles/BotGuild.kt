@@ -93,12 +93,26 @@ class BotGuild(
 
         try {
             val result = bot.commandDispatcher.execute(parseResults)
+            if (result <= 0) {
+                val githubUrl = source.bot.properties.getProperty("github_page")
+                val embed = source.bot.createInfoMessage(
+                    "**Unknown command!**",
+                    "[Please check command reference on GitHub: $githubUrl]($githubUrl)"
+                )
+                source.channel.sendMessage(embed).queue()
+            }
             log.debug(
                 "User {} executed command '{}' in channel {} in message {} with result {}",
                 author.id, content, channel.idLong, message.idLong, result
             )
         } catch (e: CommandSyntaxException) {
-            channel.sendMessage("Command syntax error! " + e.message).queue()
+            val githubUrl = source.bot.properties.getProperty("github_page")
+            val embed = source.bot.createInfoMessage(
+                "**Unknown command syntax!**",
+                "Error at position ${e.cursor}." +
+                        "\n[Please check command reference on GitHub: $githubUrl]($githubUrl)"
+            )
+            source.channel.sendMessage(embed).queue()
             log.debug(
                 "User {} executed command '{}' in channel {} in message {} but it failed from bad syntax",
                 author.id, content, channel.idLong, message.idLong, e
@@ -159,9 +173,10 @@ class BotGuild(
     @Synchronized
     fun addInvite(invite: BotGuildInvite) {
         val old = invites[invite.code]
-        if (old != null || old != invite) {
+        if (old == null || old != invite) {
             bot.invitesRepository.set(invite)
         }
+        invites[invite.code] = invite
     }
 
     /**

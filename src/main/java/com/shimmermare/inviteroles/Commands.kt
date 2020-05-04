@@ -20,7 +20,7 @@ class CommandSource(val bot: InviteRoles, val guild: BotGuild, val channel: Text
 /**
  * Bot commands.
  *
- * Brigadier requires to return magic int - don't bother and always return 0, it's not used in this context.
+ * Brigadier requires to return magic int - return 1 if you processed the command somehow.
  */
 object Commands {
     private val LOGGER = LoggerFactory.getLogger(Commands::class.java)
@@ -30,6 +30,7 @@ object Commands {
             .then(literal("settings")
                 .requires { it.member.hasPermission(Permission.ADMINISTRATOR) }
                 .then(
+                    // TODO: generalize settings command to <setting, value> pair.
                     literal("warnings")
                         .then(
                             argument("value", bool())
@@ -47,13 +48,15 @@ object Commands {
                 )
                 .executes(::printInvites)
             )
-            .executes(::printHelp)
+            .then(
+                literal("invites")
+                    .executes(::printInvites)
+            )
         )
 
         // Short alias
         commandDispatcher.register(
             literal("ir")
-                .executes(::printHelp)
                 .redirect(root)
         )
     }
@@ -64,12 +67,12 @@ object Commands {
         val settings = guild.settings
 
         val fields = listOf(
-            MessageEmbed.Field("Warnings", settings.warnings.toString(), true)
+            MessageEmbed.Field("Warnings", settings.warnings.toString(), false)
         )
         val message = source.bot.createInfoMessage("**Current settings**", fields = fields)
         source.channel.sendMessage(message).queue()
         LOGGER.debug("(guild: {}, user: {}): Printed current settings", guild.id, source.member.idLong)
-        return 0
+        return 1
     }
 
     private fun warningsSet(context: CommandContext<CommandSource>): Int {
@@ -79,7 +82,7 @@ object Commands {
         guild.settings = guild.settings.copy(warnings = warnings)
         source.channel.sendMessage("Warnings set to **`$warnings`**.").queue()
         LOGGER.debug("(guild: {}, user: {}): Warning status set to {}", guild.id, source.member.idLong, warnings)
-        return 5
+        return 1
     }
 
     private fun printInvites(context: CommandContext<CommandSource>): Int {
@@ -90,7 +93,7 @@ object Commands {
             MessageEmbed.Field(
                 invite.code.censorLast(),
                 "**${guild.guild.getRoleById(invite.roleId)?.name}**",
-                true
+                false
             )
         }
         val message = if (fields.isEmpty()) {
@@ -100,7 +103,7 @@ object Commands {
         }
         source.channel.sendMessage(message).queue()
         LOGGER.debug("(guild: {}, user: {}): Printed active invites", guild.id, source.member.idLong)
-        return 0
+        return 1
     }
 
     private fun inviteRemove(context: CommandContext<CommandSource>): Int {
@@ -117,12 +120,12 @@ object Commands {
                 "(guild: {}, user: {}): Tried to remove non-existent invite {}",
                 source.member.idLong, guild.id, inviteCode
             )
-            return 1 shl 16 or 3
+            return 1
         }
 
         channel.sendMessage("Roles were cleared from invite `${inviteCode.censorLast()}`.").queue()
         LOGGER.debug("(guild: {}, user: {}): Removed invite {}", guild.id, source.member.idLong, inviteCode)
-        return 3
+        return 1
     }
 
     private fun inviteSet(context: CommandContext<CommandSource>): Int {
@@ -141,7 +144,7 @@ object Commands {
                 "(guild: {}, user: {}): Tried to set non-existent role for invite {}",
                 guild.id, member.idLong, inviteCode
             )
-            return 3 shl 16 or 2
+            return 1
         }
 
         if (!doesInviteExists(guild, inviteCode)) {
@@ -150,7 +153,7 @@ object Commands {
                 "(guild: {}, user: {}): Tried to set role {} for non-existent invite {}",
                 guild.id, member.idLong, role.idLong, inviteCode
             )
-            return 4 shl 16 or 2
+            return 1
         }
 
         if (!guild.guild.selfMember.canInteract(role)) {
@@ -159,7 +162,7 @@ object Commands {
                 "(guild: {}, user: {}): Tried to set role {} which bot doesn't have permissions for.",
                 guild.id, member.idLong, role.idLong
             )
-            return 5 shl 16 or 2
+            return 1
         }
 
         guild.addInvite(BotGuildInvite(inviteCode, guild.id, role.idLong))
@@ -167,20 +170,6 @@ object Commands {
         LOGGER.debug(
             "(guild: {}, user: {}): Role {} is set to invite {}", guild.id, member.idLong, inviteCode, role.idLong
         )
-        return 2
-    }
-
-    private fun printHelp(context: CommandContext<CommandSource>): Int {
-        val source = context.source
-        val guild = source.guild
-
-        val githubUrl = source.bot.properties.getProperty("github_page")
-        val embed = source.bot.createInfoMessage(
-            "Looking for command guide?",
-            "[Check out GitHub page: $githubUrl]($githubUrl)"
-        )
-        source.channel.sendMessage(embed).queue()
-        LOGGER.debug("(guild: {}, user: {}): Requested settings", guild.id, source.member.idLong)
         return 1
     }
 
