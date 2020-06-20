@@ -1,0 +1,21 @@
+version: @project.version@
+default_locale_code: en_US
+locales_folder: locales
+command_prefix: /
+
+github_url: https://github.com/shimmermare/InviteRoles
+
+author:
+  name: Shimmermare
+  twitter_url: https://twitter.com/shimmermare
+  github_url: https://github.com/shimmermare
+  website_url: https://shimmermare.com
+
+spring:
+  datasource:
+    url: "jdbc:h2:file:./data"
+    driverClassName: org.h2.Driver
+    username: default
+    # password: - no password, it's a one file DB after all
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect

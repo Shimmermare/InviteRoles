@@ -1,0 +1,16 @@
+package com.shimmermare.inviteroles.entity
+
+import javax.persistence.*
+
+@Entity
+@Table(name = "invites")
+data class TrackedInvite(
+    @Id
+    @Column(name = "invite_code")
+    val inviteCode: String,
+    @Column(name = "guild_id")
+    val guildId: Long,
+    @ElementCollection
+    @Column(name = "roles", nullable = false)
+    val roles: List<Long> = emptyList()
+)
