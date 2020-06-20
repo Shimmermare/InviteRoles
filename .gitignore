@@ -6,3 +6,6 @@
 logs
 target
 out
+
+### Data ###
+*.db
