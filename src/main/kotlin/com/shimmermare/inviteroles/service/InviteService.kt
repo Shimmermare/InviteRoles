@@ -1,9 +1,9 @@
 package com.shimmermare.inviteroles.service
 
+import com.shimmermare.inviteroles.asNullable
 import com.shimmermare.inviteroles.entity.TrackedInvite
 import com.shimmermare.inviteroles.repository.TrackedInviteRepository
 import net.dv8tion.jda.api.entities.Guild
-import net.dv8tion.jda.api.entities.Role
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -13,7 +13,7 @@ class InviteService(
 ) {
     @Transactional(readOnly = true)
     fun getInvite(inviteCode: String): TrackedInvite? {
-        return repository.get(inviteCode)
+        return repository.findById(inviteCode).asNullable()
     }
 
     @Transactional
@@ -21,31 +21,19 @@ class InviteService(
         var invite = getInvite(inviteCode)
         if (invite == null) {
             invite = TrackedInvite(inviteCode, guildId)
-            saveInvite(invite)
+            repository.save(invite)
         }
         return invite
     }
 
     @Transactional
-    fun getInvitesOfGuild(guildId: Long) = repository.getAllOfGuild(guildId)
-
-    @Transactional
-    fun getInvitesOfGuild(guild: Guild) = getInvitesOfGuild(guild.idLong)
-
-    @Transactional
-    fun saveInvite(invite: TrackedInvite) = repository.set(invite)
-
-    @Transactional
-    fun deleteInvite(invite: TrackedInvite) = deleteInvite(invite.inviteCode)
-
-    @Transactional
-    fun deleteInvite(inviteCode: String) = repository.delete(inviteCode)
+    fun getOrCreateInvite(inviteCode: String, guild: Guild) = getOrCreateInvite(inviteCode, guild.idLong)
 
     @Transactional(readOnly = true)
-    fun getInvitesWithRole(guild: Guild, role: Role): List<TrackedInvite> {
-        return repository.getAllOfGuild(guild.idLong).asSequence()
-            .filter { it.roles.contains(role.idLong) }.toList()
-    }
+    fun getInvitesOfGuild(guildId: Long) = repository.getAllOfGuild(guildId)
+
+    @Transactional(readOnly = true)
+    fun getInvitesOfGuild(guild: Guild) = getInvitesOfGuild(guild.idLong)
 
     @Transactional
     fun modifyInvite(code: String, block: (TrackedInvite?) -> TrackedInvite?): TrackedInvite? {
@@ -55,14 +43,14 @@ class InviteService(
             if (newInvite == null) {
                 // Do nothing
             } else {
-                saveInvite(newInvite)
+                repository.save(newInvite)
             }
         } else {
             if (newInvite == null) {
-                deleteInvite(code)
+                repository.delete(invite)
             } else {
                 assertChangeLegal(invite, newInvite)
-                saveInvite(newInvite)
+                repository.save(newInvite)
             }
         }
         return newInvite

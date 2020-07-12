@@ -11,6 +11,8 @@ author:
   github_url: https://github.com/shimmermare
   website_url: https://shimmermare.com
 
+
+
 spring:
   datasource:
     url: "jdbc:h2:file:./data"
@@ -19,3 +21,8 @@ spring:
     # password: - no password, it's a one file DB after all
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+  h2:
+    console:
+      enabled: true

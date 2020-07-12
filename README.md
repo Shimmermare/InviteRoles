@@ -3,8 +3,20 @@
 Automatically grant roles to users who joined through specific invite.  
 
 ### Commands ###
+You can specify invite as invite code or as a link.
+Role can be specified via mention or it's name (use "quotes" if role has whitespaces in the name). If specified by name, first role with that name will be used.
 
-+ **`/ir settings`** will print current settings.
++ `/ir` will output information about the bot (e.g. version).
++ `/ir settings` will output current guild settings.
++ `/ir settings reset` will reset guild settings to default.
++ `/ir settings <name>` will output current setting value.
++ `/ir settings <name> <value>` will change setting value.
++ `/ir invites` will output invites with roles assigned.
++ `/ir invites <invite>` will output roles assigned to an invite.
++ `/ir invites <invite> clear` will remove all assigned roles from an invite.
++ `/ir invites <invite> add <role>` will assign role to an invite.
++ `/ir invites <invite> remove <role>` will remove role from an invite.
+
 + To change settings, use **`/ir settings <setting name> <value>`**.
 + **`/ir invite`** will print all invites with the role set.
 + To set role to invite, use **`/ir invite <invite code or link> <role mention or "role name in quotes">`**.

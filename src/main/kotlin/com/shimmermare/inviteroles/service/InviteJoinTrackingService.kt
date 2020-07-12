@@ -10,7 +10,6 @@ import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent
 import net.dv8tion.jda.api.hooks.ListenerAdapter
 import org.springframework.context.event.ContextClosedEvent
 import org.springframework.context.event.ContextRefreshedEvent
-import org.springframework.context.event.ContextStartedEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
@@ -20,8 +19,10 @@ import kotlin.concurrent.withLock
 
 @Service
 class InviteJoinTrackingService(
-    val jda: JDA,
-    val roleGranterService: RoleGranterService
+    private val jda: JDA,
+    private val notificationService: NotificationService,
+    private val i18n: InternalizationService,
+    private val roleGranterService: RoleGranterService
 ) : ListenerAdapter() {
     private val log = logger<InviteJoinTrackingService>()
 
@@ -61,14 +62,20 @@ class InviteJoinTrackingService(
                     "Determined that member {} joined guild {} with invite {}",
                     member, member.guild, invite
                 )
-                roleGranterService.grantRoles(member, invite)
+                roleGranterService.grantRolesIfNeeded(member, invite)
             },
             onJoinUnsure = { member, invites ->
                 log.debug(
                     "Can't determine the exact invite used when member {} joined guild {}: candidates are: {}",
                     member, member.guild, invites
                 )
-                // TODO: send notification
+                val title = i18n.apply(guild, "join_tracking.notification.ambiguous_join_event.title")
+                val message = i18n.apply(
+                    guild, "join_tracking.notification.ambiguous_join_event.message",
+                    "member" to "${member.effectiveName} (${member.id})",
+                    "candidates" to invites.joinToString()
+                )
+                notificationService.sendInfo(guild, title, message)
             }
         )
 

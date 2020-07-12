@@ -3,6 +3,7 @@ package com.shimmermare.inviteroles
 import net.dv8tion.jda.api.entities.Guild
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.util.*
 
 inline fun <reified T : Any> logger(): Logger = LoggerFactory.getLogger(T::class.java)
 
@@ -22,3 +23,5 @@ fun String.toBooleanExplicit(): Boolean {
         else -> throw IllegalArgumentException("$this can't be interpreted as boolean value")
     }
 }
+
+fun <T> Optional<T>.asNullable(): T? = this.orElse(null)

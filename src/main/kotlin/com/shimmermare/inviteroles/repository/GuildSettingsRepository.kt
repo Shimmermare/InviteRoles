@@ -1,17 +1,13 @@
 package com.shimmermare.inviteroles.repository
 
 import com.shimmermare.inviteroles.entity.GuildSettings
+import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
-import org.springframework.transaction.annotation.Transactional
 
+/**
+ * Settings for a guild are not deleted even after the bot left.
+ *
+ * Simple CRUD is automatically managed by Spring.
+ */
 @Repository
-interface GuildSettingsRepository {
-    @Transactional(readOnly = true)
-    fun get(guildId: Long): GuildSettings?
-
-    @Transactional
-    fun set(settings: GuildSettings)
-
-    @Transactional
-    fun delete(guildId: Long)
-}
+interface GuildSettingsRepository : CrudRepository<GuildSettings, Long>

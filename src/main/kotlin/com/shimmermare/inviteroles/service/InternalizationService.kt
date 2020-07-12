@@ -59,6 +59,12 @@ class InternalizationService(
 
     fun locale(code: String): Locale? = locales[code]
 
+    fun applyDefault(label: String): String =
+        getLocaleOrDefault(DEFAULT_LOCALE)?.apply(label) ?: label
+
+    fun applyDefault(label: String, vararg args: Pair<String, Any>): String =
+        getLocaleOrDefault(DEFAULT_LOCALE)?.apply(label, args.toMap()) ?: label
+
     fun apply(guild: Guild, label: String): String =
         apply(guildSettingsService.getOrCreateSettings(guild).language, label)
 
@@ -87,6 +93,10 @@ class InternalizationService(
             2 -> split[0].toLowerCase() + "_" + split[1].toUpperCase()
             else -> throw IllegalArgumentException("$code is not a valid ISO language code")
         }
+    }
+
+    companion object {
+        const val DEFAULT_LOCALE = "en_US"
     }
 }
 

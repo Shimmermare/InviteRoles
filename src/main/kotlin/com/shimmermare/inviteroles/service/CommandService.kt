@@ -8,10 +8,10 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.RequiredArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.CommandSyntaxException
-import com.shimmermare.inviteroles.asChannelMention
 import com.shimmermare.inviteroles.configuration.BasicConfiguration
 import com.shimmermare.inviteroles.configuration.MessageConfiguration
-import com.shimmermare.inviteroles.entity.*
+import com.shimmermare.inviteroles.entity.GuildSettings
+import com.shimmermare.inviteroles.entity.TrackedInvite
 import com.shimmermare.inviteroles.hasInvite
 import com.shimmermare.inviteroles.logger
 import com.shimmermare.inviteroles.service.InviteArgumentType.invite
@@ -131,6 +131,9 @@ class CommandService(
             .then(literal("settings")
                 .requires { it.member.hasPermission(Permission.ADMINISTRATOR) }
                 .then(
+                    literal("reset").executes(::resetSettings)
+                )
+                .then(
                     argument("setting", string())
                         .then(argument("value", string()).executes(::editSetting))
                         .executes(::settingInfo)
@@ -201,15 +204,27 @@ class CommandService(
         val guild = source.guild
         val settings = settingsService.getOrCreateSettings(guild)
 
-        val fields = mapOf(
-            NOTIFICATIONS_SETTING to settings.notifications.toString(),
-            NOTIFICATION_CHANNEL_SETTING to settings.notificationChannel.toString(),
-            LANG_SETTING to settings.language
-        )
+        val title = i18n.apply(guild, "command.settings.info_all.title")
+        val fields = settings.getAsStringMap()
+        val message = messageConfiguration.createInfoMessage(guild, title, fields = fields)
+        source.channel.sendMessage(message).queue()
+        log.info("(guild: {}, user: {}): Requested current settings", guild, source.member)
+        return 1
+    }
 
-        val message = messageConfiguration.createInfoMessage(
-            guild, title = i18n.apply(guild, "command.settings.info_all.title"), fields = fields
-        )
+    /**
+     * Command endpoint
+     * /ir settings reset
+     */
+    private fun resetSettings(context: CommandContext<CommandSource>): Int {
+        val source = context.source
+        val guild = source.guild
+        settingsService.modifySettings(guild) {
+            return@modifySettings GuildSettings(guildId = guild.idLong)
+        }
+        val title = i18n.apply(guild, "command.settings.reset.title")
+        val desc = i18n.apply(guild, "command.settings.reset.description")
+        val message = messageConfiguration.createSuccessMessage(guild, title, desc)
         source.channel.sendMessage(message).queue()
         log.info("(guild: {}, user: {}): Requested current settings", guild, source.member)
         return 1
@@ -226,8 +241,11 @@ class CommandService(
 
         val title = i18n.apply(guild, "command.settings.info.title")
 
-        val info = settingsService.getSettingByString(guild, setting)
-        if (info == null) {
+        val settings = settingsService.getOrCreateSettings(guild)
+        val value: String
+        try {
+            value = settings.getAsStringByName(setting)
+        } catch (e: IllegalArgumentException) {
             val desc = i18n.apply(guild, "command.settings.info.error.not_found.description", "setting" to setting)
             val message = messageConfiguration.createErrorMessage(guild, title, desc)
             source.channel.sendMessage(message).queue()
@@ -235,21 +253,14 @@ class CommandService(
             return 1
         }
 
-        val settings = settingsService.getOrCreateSettings(guild)
-        val settingValue = getSettingByName(settings, setting)
         val desc = i18n.apply(
             guild, "command.settings.info.success.description",
-            "setting" to setting, "value" to settingValue
+            "setting" to setting, "value" to value
         )
         val message = messageConfiguration.createInfoMessage(guild, title, desc)
         source.channel.sendMessage(message).queue()
         log.info("(guild: {}, user: {}): Requested setting {}", guild, source.member, setting)
         return 1
-    }
-
-    private fun getSettingByName(settings: GuildSettings, setting: String): String {
-        return settingsService.getSettingByString(settings, setting)
-            ?: throw IllegalArgumentException("Unknown property")
     }
 
     /**
@@ -272,8 +283,10 @@ class CommandService(
     private fun tryEditSettings(source: CommandSource, setting: String, value: String) {
         val guild = source.guild
 
-        val settings = settingsService.setSettingFromString(guild, setting, value)
-        val newValue = settingsService.getSettingByString(settings, setting).toString()
+        val settings = settingsService.modifySettings(guild) {
+            it.setFromStringByName(setting, value)
+        }
+        val newValue = settings.getAsStringByName(setting)
 
         val message = messageConfiguration.createSuccessMessage(
             guild,
@@ -281,8 +294,8 @@ class CommandService(
             description = i18n.apply(
                 guild,
                 "command.settings.edit.success.description",
-                "setting" to newValue /* no nulls */,
-                "value" to value
+                "setting" to setting /* no nulls */,
+                "value" to newValue
             )
         )
         source.channel.sendMessage(message).queue()
