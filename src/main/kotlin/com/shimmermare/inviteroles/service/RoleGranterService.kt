@@ -14,7 +14,7 @@ class RoleGranterService(
     private val inviteService: InviteService,
     private val notificationService: NotificationService
 ) {
-    private val log = logger<RoleGranterService>()
+    private val log = logger()
 
     fun grantRolesIfNeeded(member: Member, inviteCode: String) {
         val guild = member.guild

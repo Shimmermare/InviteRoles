@@ -24,7 +24,7 @@ class InviteJoinTrackingService(
     private val i18n: InternalizationService,
     private val roleGranterService: RoleGranterService
 ) : ListenerAdapter() {
-    private val log = logger<InviteJoinTrackingService>()
+    private val log = logger()
 
     private val trackers = ConcurrentHashMap<Guild, InviteJoinTracker>()
 

@@ -20,7 +20,7 @@ class InternalizationService(
     private val basicConfiguration: BasicConfiguration,
     private val guildSettingsService: GuildSettingsService
 ) {
-    private val log = logger<InternalizationService>()
+    private val log = logger()
 
     private val locales: MutableMap<String, Locale> = HashMap()
 

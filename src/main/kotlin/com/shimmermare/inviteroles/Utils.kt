@@ -7,6 +7,8 @@ import java.util.*
 
 inline fun <reified T : Any> logger(): Logger = LoggerFactory.getLogger(T::class.java)
 
+fun Any.logger(): Logger = LoggerFactory.getLogger(this::class.java)
+
 /**
  * Check if guild has invite with the given code. Blocking.
  */

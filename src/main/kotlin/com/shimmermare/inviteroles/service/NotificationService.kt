@@ -13,7 +13,7 @@ class NotificationService(
     private val settingsService: GuildSettingsService,
     private val messageConfiguration: MessageConfiguration
 ) {
-    private val log = logger<NotificationService>()
+    private val log = logger()
 
     fun sendSuccess(guild: Guild, title: String, message: String) {
         val embed = messageConfiguration.createSuccessMessage(guild, title, message)

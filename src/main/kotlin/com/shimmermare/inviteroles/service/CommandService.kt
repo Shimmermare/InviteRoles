@@ -49,7 +49,7 @@ class CommandService(
     private val inviteService: InviteService,
     private val i18n: InternalizationService
 ) : ListenerAdapter() {
-    private val log = logger<CommandService>()
+    private val log = logger()
     private val dispatcher = CommandDispatcher<CommandSource>()
 
     init {

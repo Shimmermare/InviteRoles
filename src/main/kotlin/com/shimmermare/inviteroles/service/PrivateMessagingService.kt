@@ -21,7 +21,7 @@ class PrivateMessagingService(
     private val basicConfiguration: BasicConfiguration,
     private val i18n: InternalizationService
 ) : ListenerAdapter() {
-    private val log = logger<PrivateMessagingService>()
+    private val log = logger()
 
     @EventListener
     fun onApplicationEvent(event: ContextRefreshedEvent) {
