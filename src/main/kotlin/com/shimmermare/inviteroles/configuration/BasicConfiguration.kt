@@ -2,6 +2,7 @@ package com.shimmermare.inviteroles.configuration
 
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.env.Environment
+import java.io.File
 
 @Configuration
 class BasicConfiguration(
@@ -13,8 +14,14 @@ class BasicConfiguration(
     val defaultLocaleCode: String
         get() = environment.getProperty("default_locale_code", "en_US")
 
-    val localesFolderPattern: String
-        get() = environment.getProperty("locales_folder_pattern", "classpath*:locales/*.properties")
+    val defaultLocalesSearchPattern: String
+        get() = environment.getProperty("default_locales_search_pattern", "classpath*:locales/*.properties")
+
+    val userLocalesSearchPattern: String
+        get() = environment.getProperty(
+            "user_locales_search_pattern",
+            "file:${File("").absolutePath}/locales/*.properties"
+        )
 
     val commandPrefix: String
         get() = environment.getProperty("command_prefix", "/")
