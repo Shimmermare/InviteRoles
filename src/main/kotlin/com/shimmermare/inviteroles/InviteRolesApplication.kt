@@ -7,5 +7,5 @@ import org.springframework.boot.runApplication
 class InviteRolesApplication
 
 fun main(args: Array<String>) {
-	runApplication<InviteRolesApplication>(*args)
+    runApplication<InviteRolesApplication>(*args)
 }
