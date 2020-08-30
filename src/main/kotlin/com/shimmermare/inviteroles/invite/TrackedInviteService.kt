@@ -40,11 +40,12 @@ class TrackedInviteService(
         if (invite == null) {
             if (newInvite == null) {
                 // Do nothing
-            } else {
+            } else if (newInvite.roles.isNotEmpty()) {
                 repository.save(newInvite)
             }
         } else {
-            if (newInvite == null) {
+            if (newInvite == null || newInvite.roles.isEmpty()) {
+                // Also delete invite if new invite has no roles assigned
                 repository.delete(invite)
             } else {
                 assertChangeLegal(invite, newInvite)
