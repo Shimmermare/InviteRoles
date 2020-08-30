@@ -10,7 +10,7 @@ data class TrackedInvite(
         val inviteCode: String,
         @Column(name = "guild_id")
         val guildId: Long,
-        @ElementCollection
+        @ElementCollection(fetch = FetchType.EAGER)
         @CollectionTable(
                 name = "invites_roles",
                 joinColumns = [JoinColumn(name = "invite_code", referencedColumnName = "invite_code")]
