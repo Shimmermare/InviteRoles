@@ -70,7 +70,7 @@ class InviteCommandProcessor(
     }
 
     private fun inviteInfoBuildField(guild: Guild, invite: TrackedInvite): Pair<String, String> {
-        val name = i18n.apply(guild, "command.invites.info.invite.name", "name" to invite.inviteCode)
+        val name = i18n.apply(guild, "command.invites.info.invite.name", "invite" to invite.inviteCode)
         val activeRoles = invite.roles.mapNotNull { guild.getRoleById(it) }
         val rolesText = activeRoles.joinToString(
                 separator = ", ",
@@ -103,7 +103,6 @@ class InviteCommandProcessor(
             )
             return 1
         }
-
 
         val field = inviteInfoBuildField(guild, invite)
         val message = messageConfiguration.createInfoMessage(guild, title, fields = mapOf(field))
