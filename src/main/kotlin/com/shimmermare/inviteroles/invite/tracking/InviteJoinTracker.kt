@@ -46,12 +46,12 @@ class InviteJoinTracker(
          * Called when a member joins the server and tracker
          * can with 99.99% confidence say which invite was used.
          */
-        val onJoinSure: (member: Member, invite: String) -> Any,
+        private val onJoinSure: (member: Member, invite: String) -> Any?,
         /**
          * Called when a member joins the server and tracker
          * can't reliably determine used invite.
          */
-        val onJoinUnsure: (member: Member, invites: List<String>) -> Any
+        private val onJoinUnsure: (member: Member, invites: List<String>) -> Any?
 ) : ListenerAdapter() {
     /**
      * Lock it to not take any chance.
