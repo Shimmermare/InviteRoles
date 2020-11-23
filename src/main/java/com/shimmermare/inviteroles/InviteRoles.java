@@ -110,7 +110,7 @@ public class InviteRoles
         catch (LoginException e)
         {
             LOGGER.error("Unable to login to Discord", e);
-            return;
+            System.exit(-1);
         }
 
         try
@@ -120,7 +120,7 @@ public class InviteRoles
         catch (InterruptedException e)
         {
             LOGGER.error("Failed to await JDA ready", e);
-            return;
+            System.exit(-1);
         }
 
         User selfUser = jda.getSelfUser();
