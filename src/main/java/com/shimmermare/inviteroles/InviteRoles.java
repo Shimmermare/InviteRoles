@@ -99,7 +99,7 @@ public class InviteRoles
         commandDispatcher = new CommandDispatcher<>();
         Command.register(commandDispatcher);
 
-        JDABuilder jdaBuilder = new JDABuilder(token);
+        JDABuilder jdaBuilder = JDABuilder.createDefault(token);
 
         try
         {
